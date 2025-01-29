@@ -9,7 +9,7 @@ Deploying Conditional Access policies using the rings concept allows for a phase
 Before diving into specifics, consider the following overarching best practices applicable to any naming convention:
 
 *   **Consistency:** Maintain uniformity across all names to avoid confusion. Use the same structure, separators, and terminology throughout.
-*   **Descriptive Names:** Ensure names are self-explanatory, reflecting the policy�s purpose, scope, and target audience.
+*   **Descriptive Names:** Ensure names are self-explanatory, reflecting the policy's purpose, scope, and target audience.
 *   **Scalability:** Design names that can accommodate future expansions without requiring major overhauls.
 *   **Avoid Special Characters:** Use alphanumeric characters and standardized separators (e.g., hyphens, underscores) to prevent issues with parsing or integrations.
 *   **Length Consideration:** Keep names concise yet descriptive. Overly long names can become cumbersome and harder to manage.
@@ -42,32 +42,32 @@ A typical naming structure might include the following components in order:
 1.  **Pilot Group Policy (Ring 0):**
 2.  Prod-CA-Ring0-MFA-AllApps-v1
 
-*   **Prod:** Production environment.
-*   **CA:** Conditional Access.
-*   **Ring0:** Pilot group.
-*   **MFA:** Multi-Factor Authentication enforcement.
-*   **AllApps:** Applies to all applications.
-*   **v1:** Version 1.
+    *   **Prod:** Production environment.
+    *    **CA:** Conditional Access.
+    *   **Ring0:** Pilot group.
+    *   **MFA:** Multi-Factor Authentication enforcement.
+    *   **AllApps:** Applies to all applications.
+    *   **v1:** Version 1.
 
-4.  **Early Adopters Policy (Ring 1):**
-5.  Prod-CA-Ring1-DeviceCompliance-Office365-v1
+3.  **Early Adopters Policy (Ring 1):**
+4.  Prod-CA-Ring1-DeviceCompliance-Office365-v1
 
-*   **DeviceCompliance:** Ensures devices meet compliance standards.
-*   **Office365:** Specific to Office 365 applications.
+    *   **DeviceCompliance:** Ensures devices meet compliance standards.
+    *   **Office365:** Specific to Office 365 applications.
 
-7.  **General Employees Policy (Ring 2):**
-8.  Prod-CA-Ring2-MFA-SalesDept-v1
+5.  **General Employees Policy (Ring 2):**
+6.  Prod-CA-Ring2-MFA-SalesDept-v1
 
-*   **SalesDept:** Targets the Sales Department.
+    *   **SalesDept:** Targets the Sales Department.
 
-10.  **Full Organization Policy (Ring 3):**
-11.  Prod-CA-Ring3-AccessBlock-AllUsers-v1
+7.   **Full Organization Policy (Ring 3):**
+8.   Prod-CA-Ring3-AccessBlock-AllUsers-v1
 
-*   **AccessBlock:** Restricts access under certain conditions.
-*   **AllUsers:** Applies to all users in the organization.
+     *   **AccessBlock:** Restricts access under certain conditions.
+     *   **AllUsers:** Applies to all users in the organization.
 
-13.  **Test Environment Policy for Early Adopters:**
-14.  Test-CA-Ring1-MFA-CRMApp-v2
+9.   **Test Environment Policy for Early Adopters:**
+10.  Test-CA-Ring1-MFA-CRMApp-v2
 
 *   **Test:** Testing environment.
 *   **CRMApp:** Specific to a CRM application.
@@ -180,32 +180,32 @@ Here are several examples combining the best practices and structured components
 
 **6\. Implementing Naming Conventions in Azure AD**
 
-When creating Conditional Access policies in Azure Active Directory (Azure AD), adhere to your established naming conventions to ensure clarity and manageability. Here�s how to apply these conventions within the Azure AD portal:
+When creating Conditional Access policies in Azure Active Directory (Azure AD), adhere to your established naming conventions to ensure clarity and manageability. Here's how to apply these conventions within the Azure AD portal:
 
 **Step-by-Step Implementation:**
 
-1.  **Navigate to Conditional Access:**
+  1.  **Navigate to Conditional Access:**
 
-*   Sign in to the [Azure portal](https://portal.azure.com/).
-*   Go to **Azure Active Directory** > **Security** > **Conditional Access**.
+      *   Sign in to the [Azure portal](https://portal.azure.com/).
+      *   Go to **Azure Active Directory** > **Security** > **Conditional Access**.
 
-3.  **Create a New Policy:**
+  2.  **Create a New Policy:**
 
-*   Click on **\+ New policy**.
+      *   Click on **\+ New policy**.
 
-5.  **Name the Policy:**
+  3.  **Name the Policy:**
 
-*   In the **Name** field, enter the policy name following your convention.
-*   **Example:** Prod-CA-Ring0-MFA-AllApps-v1
+      *   In the **Name** field, enter the policy name following your convention.
+      *   **Example:** Prod-CA-Ring0-MFA-AllApps-v1
 
-7.  **Configure Assignments and Controls:**
+  4.  **Configure Assignments and Controls:**
 
-*   Proceed to define users, applications, conditions, and access controls as per your deployment plan.
+      *   Proceed to define users, applications, conditions, and access controls as per your deployment plan.
 
-9.  **Save and Review:**
+  5.  **Save and Review:**
 
-*   After configuring, review the policy settings.
-*   Save the policy to apply it to the designated ring.
+      *   After configuring, review the policy settings.
+      *   Save the policy to apply it to the designated ring.
 
 _Tip:_ Consistently use your naming conventions for all CA policies to maintain order and facilitate easier identification and management.
 
@@ -259,49 +259,17 @@ New-AzureADMSConditionalAccessPolicy -DisplayName $policyName -OtherParameters .
 
 **8\. Sample Naming Convention Guide**
 
-To facilitate implementation, here�s a summarized guide for your reference:
+To facilitate implementation, here’s a summarized guide for your reference:
 
-**Component**
+| Component          | Description                                | Example Values                  |
+|--------------------|--------------------------------------------|---------------------------------|
+| **Environment**    | Deployment environment                    | Prod, Test, Dev                |
+| **Policy Type**    | Type of policy                            | CA (Conditional Access)        |
+| **Ring Level**     | Deployment ring                          | Ring0, Ring1, Ring2, Ring3     |
+| **Purpose**        | Policy purpose or function               | MFA, DeviceCompliance, AccessBlock |
+| **Scope/Application** | Target scope or specific application    | AllApps, Office365, SalesDept  |
+| **Version**        | Policy version number                    | v1, v2                         |
 
-**Description**
-
-**Example Values**
-
-**Environment**
-
-Deployment environment
-
-Prod, Test, Dev
-
-**Policy Type**
-
-Type of policy
-
-CA (Conditional Access)
-
-**Ring Level**
-
-Deployment ring
-
-Ring0, Ring1, Ring2, Ring3
-
-**Purpose**
-
-Policy purpose or function
-
-MFA, DeviceCompliance, AccessBlock
-
-**Scope/Application**
-
-Target scope or specific application
-
-AllApps, Office365, SalesDept
-
-**Version**
-
-Policy version number
-
-v1, v2
 
 **Naming Structure Template:**
 
