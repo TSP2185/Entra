@@ -89,4 +89,4 @@ As an admin, you can manually revoke a user’s session via:
 
 This ensures that **disabled users lose access instantly**, enhancing security and compliance. 🚀
 
-Write-Output "User disabled and tokens revoked successfully!"
+
