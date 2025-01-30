@@ -1,4 +1,3 @@
-```markdown
 # **Different Ways to Enable and Enforce MFA in Microsoft Entra ID**
 
 Multi-Factor Authentication (MFA) is a critical security measure in **Microsoft Entra ID (formerly Azure AD)** that enhances protection by requiring an additional verification method beyond just a password. There are multiple ways to **enable and enforce MFA**, each suited for different use cases.
@@ -137,4 +136,3 @@ You can configure **MFA enforcement per application** using **Conditional Access
 - **For Specific Apps** → Use **App-Specific MFA Policies**.
 
 Using the right method ensures your organization's security while maintaining a seamless user experience. 🚀
-```
