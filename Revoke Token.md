@@ -40,5 +40,34 @@ Update-MgUser -UserId $UserId -AccountEnabled $false
 
 # Revoke all refresh tokens for the user
 Revoke-MgUserSignInSession -UserId $UserId
+```
+This script **disables the user** and **revokes their tokens immediately**, logging them out from all active sessions.
+
+---
+
+## **4. Automate Token Revocation Using Entra ID Dynamic Groups + Logic Apps**
+You can automate the process using **Microsoft Entra ID Dynamic Groups** and **Azure Logic Apps**:
+
+- **Create a Dynamic Group in Entra ID** that automatically detects disabled users.
+- **Trigger an Azure Logic App or Power Automate Flow** when a user enters this group.
+- **Call the Microsoft Graph API** to revoke their tokens.
+
+---
+
+## **5. Enforce Sign-Out via Entra ID Portal**
+As an admin, you can manually revoke a user’s session via:
+
+1. **Go to Microsoft Entra ID** → **Users**.
+2. **Select the disabled user**.
+3. **Click on "Revoke Sessions"** to force sign-out.
+
+---
+
+## **Conclusion**
+- **Best Practice**: Enable **CAE** for **automatic** real-time token revocation.
+- **Immediate Action**: Use **Graph API** (`Revoke-MgUserSignInSession`) to force sign-outs.
+- **Automate**: Set up **Entra ID Dynamic Groups + Azure Logic Apps** to trigger automatic revocation.
+
+This ensures that **disabled users lose access instantly**, enhancing security and compliance. 🚀
 
 Write-Output "User disabled and tokens revoked successfully!"
