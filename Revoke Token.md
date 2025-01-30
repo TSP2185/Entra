@@ -40,6 +40,7 @@ Update-MgUser -UserId $UserId -AccountEnabled $false
 
 # Revoke all refresh tokens for the user
 Revoke-MgUserSignInSession -UserId $UserId
+Write-Output "User disabled and tokens revoked successfully!"
 ```
 This script **disables the user** and **revokes their tokens immediately**, logging them out from all active sessions.
 
