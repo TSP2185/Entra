@@ -116,8 +116,7 @@
 
 ---
 
-## **Conclusion**
-By using **Intune, Azure AD, and certificate-based authentication (CBA)**, we have successfully **restricted a YubiKey to a specific user-device pair**. This ensures that the same YubiKey **cannot be used on another machine**.
+
 
 Would you like additional **troubleshooting tips** or **PowerShell automation scripts** for bulk deployment? 🚀
 
