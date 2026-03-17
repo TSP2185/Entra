@@ -1,1 +1,6 @@
+theme: jekyll-theme-primer
+title: Entra Docs
+description: ""
 header_pages: []
+exclude:
+  - README.md
