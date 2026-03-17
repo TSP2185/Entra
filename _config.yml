@@ -1,1 +1,6 @@
+remote_theme: jekyll/minima
+title: Entra Docs
+description: ""
 header_pages: []
+exclude:
+  - README.md
