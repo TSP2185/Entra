@@ -1,6 +1,5 @@
 # Lessons from the Stryker Cyberattack: A Practical Microsoft Defense Playbook
 
-**Author:** Security Architect | Microsoft Identity & Endpoint Security
 **Published:** March 2026
 **Tags:** `Microsoft Sentinel` `Entra ID` `Intune` `Zero Trust` `KQL` `Incident Response` `Global Secure Access`
 
