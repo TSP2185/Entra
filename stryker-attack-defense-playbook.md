@@ -128,14 +128,14 @@ Before building defenses, understand what the available evidence suggests happen
 
 | Step | What Was Missing | Section That Fixes It |
 |---|---|---|
-| Initial access | Phishing-resistant MFA | §2.1 |
-| Authentication bypass | FIDO2 / device-bound auth | §2.1 |
-| Standing GA access | PIM JIT elevation | §2.2 |
-| **New GA account created** | **GA creation restriction + alert** | **§2.2, §6.1, §6.2** |
-| Unrestricted Intune access | Scope tags + custom wipe role | §4.2, §4.3 |
-| No wipe approval | Multi-Admin Approval | §5 |
-| Admin portal reachable remotely | Entra Private Access + GSA | §3 |
-| No detection | Sentinel hunting queries | §6 |
+| Initial access | Phishing-resistant MFA | 2.1 |
+| Authentication bypass | FIDO2 / device-bound auth | 2.1 |
+| Standing GA access | PIM JIT elevation | 2.2 |
+| **New GA account created** | **GA creation restriction + alert** | **2.2, 6.1, 6.2** |
+| Unrestricted Intune access | Scope tags + custom wipe role | 4.2, 4.3 |
+| No wipe approval | Multi-Admin Approval | 5 |
+| Admin portal reachable remotely | Entra Private Access + GSA | 3 |
+| No detection | Sentinel hunting queries | 6 |
 
 Each step had a gap that could have been closed with controls most organizations already have licensed. The sections below work through each one.
 
