@@ -25,6 +25,10 @@ This post walks through each control gap in the attack and gives you the specifi
 
 1. [Understanding the Attack Chain](#1-understanding-the-attack-chain)
 2. [Protecting Global Administrator Accounts](#2-protecting-global-administrator-accounts)
+   - 2.1 Phishing-Resistant MFA (FIDO2)
+   - 2.2 Restrict GA Account Creation
+   - 2.3 Break-Glass Account Hygiene
+   - 2.4 Conditional Access: Risky User and Session Controls
 3. [Restricting Admin Portal Access with Entra Private Access](#3-restricting-admin-portal-access-with-entra-private-access)
 4. [Locking Down Intune Device Wipe Capabilities](#4-locking-down-intune-device-wipe-capabilities)
 5. [Multi-Admin Approval for Destructive Actions](#5-multi-admin-approval-for-destructive-actions)
@@ -127,14 +131,17 @@ Before building defenses, understand what the available evidence suggests happen
 
 | Step | What Was Missing | Section That Fixes It |
 |---|---|---|
-| Initial access | Phishing-resistant MFA | 2.1 |
-| Authentication bypass | FIDO2 / device-bound auth | 2.1 |
-| Standing GA access | PIM JIT elevation | 2.2 |
-| **New GA account created** | **GA creation restriction + alert** | **2.2, 6.1, 6.2** |
-| Unrestricted Intune access | Scope tags + custom wipe role | 4.2, 4.3 |
-| No wipe approval | Multi-Admin Approval | 5 |
-| Admin portal reachable remotely | Entra Private Access + GSA | 3 |
-| No detection | Sentinel hunting queries | 6 |
+| AiTM token theft for initial access | Token Protection, Block Device Code Flow | §2.4 (Policies 6, 9) |
+| Stolen token replayed on attacker device | Token bound to originating device | §2.4 (Policy 9) |
+| Compromised admin session not blocked | Block High Risk Users | §2.4 (Policy 3) |
+| Standard MFA bypassable | Phishing-resistant MFA (FIDO2) | §2.1 |
+| Standing GA access, no approval | PIM JIT elevation with approval | §2.2 |
+| **New GA backdoor account created** | **GA creation restriction + Graph blocked + alert** | **§2.2, §2.4 (Policy 4), §6.1, §6.2** |
+| **MFA registered on backdoor account** | **Block MFA registration for risky sessions** | **§2.4 (Policies 1, 2)** |
+| Admin portal reachable from any device | Entra Private Access + GSA + PAW | §2.4 (Policy 8), §3 |
+| Unrestricted Intune wipe access | Scope tags + custom wipe role | §4.2, §4.3 |
+| No second human in wipe workflow | Multi-Admin Approval | §5 |
+| No detection or response | Sentinel queries + Logic App | §6, §7 |
 
 Each step had a gap that could have been closed with controls most organizations already have licensed. The sections below work through each one.
 
@@ -268,6 +275,322 @@ SigninLogs
 ```
 
 Any result from this query should be treated as a critical security event.
+
+---
+
+### 2.4 Conditional Access: Risky User and Session Controls
+
+The controls in sections 2.1-2.3 harden the accounts themselves. This section covers the CA policies that act on **runtime signals** — what Entra ID Protection and Microsoft Defender observe during and after authentication. These would have caught or blocked the Stryker attack at multiple points even if credentials were already compromised.
+
+> **Where these fit in the Stryker chain:** The attacker authenticated successfully (gap in 2.1). Once inside, they created a new GA account and registered authentication methods on it. Entra ID Protection would have generated risk signals on that session. None of those signals were acted on because the policies below did not exist. Each one closes a specific window.
+
+---
+
+#### Policy 1: Block MFA Registration for User Risk (Any Level)
+
+When an attacker creates a backdoor GA account, the first thing they do is register authentication methods on it so they can use it independently. If that new account, or the session creating it, carries any user risk signal, blocking MFA registration prevents the attacker from arming the backdoor.
+
+Setting this to block at Low/Medium/High is intentionally aggressive for security info registration. The reasoning is that registering MFA is a high-impact action. It should never happen from a session that Entra considers risky at any level.
+
+**Configuration:**
+```
+Policy Name: BLOCK - MFA Registration for Risky Users
+Target: Security info registration (User Actions)
+Users: All Users
+User Risk: High, Medium, Low
+Grant: Block access
+```
+
+```json
+{
+  "displayName": "BLOCK - MFA Registration for Risky Users",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": {
+      "includeUserActions": ["urn:user:registersecurityinfo"]
+    },
+    "userRiskLevels": ["high", "medium", "low"]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}
+```
+
+> **Stryker relevance:** Blocks the attacker from registering MFA on the newly created backdoor GA account if that account or session carries any risk signal. Without MFA registered, the backdoor account cannot pass CA policies requiring MFA — it is unusable.
+
+---
+
+#### Policy 2: Block MFA Registration for Sign-in Risk (Any Level)
+
+Mirrors Policy 1 but fires on the sign-in risk signal rather than user risk. Sign-in risk is evaluated per session and responds faster to real-time anomalies like unfamiliar IP, atypical travel, and anomalous token properties.
+
+```
+Policy Name: BLOCK - MFA Registration for Risky Sign-ins
+Target: Security info registration (User Actions)
+Users: All Users
+Sign-in Risk: High, Medium, Low
+Grant: Block access
+```
+
+```json
+{
+  "displayName": "BLOCK - MFA Registration for Risky Sign-ins",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": {
+      "includeUserActions": ["urn:user:registersecurityinfo"]
+    },
+    "signInRiskLevels": ["high", "medium", "low"]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}
+```
+
+> **Stryker relevance:** The initial admin session from an attacker in Iran accessing a US-based tenant would generate a high sign-in risk score from Entra ID Protection near-immediately. This policy blocks that session from registering anything.
+
+---
+
+#### Policy 3: Block High Risk Users from All Access
+
+This is the most impactful policy in the set. When Entra ID Protection assigns High user risk to an account, no access to any app is permitted until risk is remediated. Do **not** configure this as "require password change" — an attacker who controls the session can complete the password change themselves and self-remediate the risk signal. Block entirely and require an admin to investigate before restoring access.
+
+```
+Policy Name: BLOCK - High Risk User All Apps
+Target: All cloud apps
+Users: All Users
+User Risk: High
+Grant: Block access
+```
+
+```json
+{
+  "displayName": "BLOCK - High Risk User All Apps",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": { "includeApplications": ["All"] },
+    "userRiskLevels": ["high"]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}
+```
+
+> **Stryker relevance:** A compromised admin account with credentials in a breach database, or showing sign-in behavior from a new country with an unknown device, would be elevated to High user risk by Entra ID Protection. This policy terminates that session before anything destructive can happen. The key point: **do not use password change as remediation here**. Require a security team review before the account is re-enabled.
+
+---
+
+#### Policy 4: Block Microsoft Graph and PowerShell for Unapproved Users
+
+The new backdoor GA account in the Stryker attack was almost certainly created via Microsoft Graph API or PowerShell rather than the Entra portal — it is faster, scriptable, and harder to spot in real-time. Graph API access for admin operations should be restricted to a named set of approved service principals and admin accounts. Regular users, newly created accounts, and unknown principals should not be able to call the Graph API at all.
+
+```
+Policy Name: BLOCK - Graph API and PowerShell for Unapproved Users
+Target: Microsoft Graph, Azure Active Directory PowerShell,
+        Microsoft Azure PowerShell
+Users: All Users
+Exclude: [Approved-GraphAdmins security group]
+Grant: Block access
+```
+
+```json
+{
+  "displayName": "BLOCK - Graph API and PowerShell Unapproved Users",
+  "state": "enabled",
+  "conditions": {
+    "users": {
+      "includeUsers": ["All"],
+      "excludeGroups": ["<Approved-GraphAdmins-Group-ObjectId>"]
+    },
+    "applications": {
+      "includeApplications": [
+        "00000003-0000-0000-c000-000000000000",
+        "1b730954-1685-4b74-9bfd-dac224a7b894",
+        "1950a258-227b-4e31-a9cf-717495945fc2"
+      ]
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}
+```
+
+> App GUIDs: Microsoft Graph = `00000003-0000-0000-c000-000000000000`, Azure AD PowerShell = `1b730954-1685-4b74-9bfd-dac224a7b894`, Azure PowerShell = `1950a258-227b-4e31-a9cf-717495945fc2`
+
+> **Stryker relevance:** Blocks the attacker from using Graph API to create the backdoor GA account or to call the Intune management API (`/deviceManagement/managedDevices/{id}/wipe`) directly — an alternative path to triggering wipe actions that bypasses the Intune portal entirely.
+
+---
+
+#### Policy 5: Require Phish-Resistant MFA for Admin Portals and Azure Management API
+
+This was covered in section 2.1 from the authentication methods angle. The CA policy angle adds one critical target: **Windows Azure Management API**. This is the service principal that gates access to the Azure Resource Manager, ARM templates, and the Intune Graph API backend. Without this in scope, an attacker who bypasses the portal can still call the API directly.
+
+```
+Target Apps to include:
+  - Microsoft Azure Management (portal.azure.com, ARM API)
+  - Microsoft Intune (endpoint.microsoft.com)
+  - Windows Azure Service Management API
+  - Microsoft Graph (for admin operations)
+
+Authentication Strength: Phishing-resistant MFA
+```
+
+> **Stryker relevance:** Ensures that even if an attacker reaches the API layer rather than the browser portal, they still face the same phishing-resistant MFA requirement.
+
+---
+
+#### Policy 6: Block Device Code Flow
+
+Device code flow is a legitimate OAuth 2.0 flow designed for devices without browsers (smart TVs, CLI tools). Attackers have weaponized it into a phishing technique: send the victim a device code, wait for them to enter it at `microsoft.com/devicelogin`, and capture the resulting token. The token is then valid on any device, not bound to the victim's machine.
+
+This is one of the most common initial access vectors in Microsoft 365 environments today.
+
+```
+Policy Name: BLOCK - Device Code Flow All Users
+Target: All cloud apps
+Users: All Users
+Authentication Flow: Device Code Flow
+Grant: Block access
+```
+
+```json
+{
+  "displayName": "BLOCK - Device Code Flow",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": { "includeApplications": ["All"] },
+    "authenticationFlows": {
+      "transferMethods": "deviceCodeFlow"
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}
+```
+
+> **Stryker relevance:** If Handala used device code phishing to capture the initial admin token, this policy eliminates that vector entirely. No device code flow means no token capture without the victim's device.
+
+---
+
+#### Policy 7: Block Authentication Transfer
+
+Authentication Transfer (also called Cross-Device Flow in some documentation) allows a user to transfer an authenticated session from one device to another. Attackers can abuse this to move a legitimate user's session into an attacker-controlled context, effectively achieving the same outcome as token theft without needing to intercept the token in transit.
+
+```
+Policy Name: BLOCK - Authentication Transfer All Users
+Target: All cloud apps
+Users: All Users
+Authentication Flow: Authentication Transfer
+Grant: Block access
+```
+
+```json
+{
+  "displayName": "BLOCK - Authentication Transfer",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": { "includeApplications": ["All"] },
+    "authenticationFlows": {
+      "transferMethods": "authenticationTransfer"
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}
+```
+
+> **Stryker relevance:** Defense-in-depth against session relay and cross-device hijacking. Pairs directly with Policy 6 to close both ends of the token theft surface.
+
+---
+
+#### Policy 8: Privileged Access Workstations (PAWs) or Compliant Device for Admins
+
+The GSA policy in Section 3 requires a managed, compliant device to reach admin portals. PAWs take this further. A PAW is a dedicated, hardened workstation used exclusively for admin tasks. It has no email client, no general internet browsing, no productivity apps, and a separate admin identity that is only used on that machine.
+
+The CA policy layer for PAWs works by requiring Entra-joined devices from a named "PAW" group:
+
+```
+Policy Name: REQUIRE - PAW or Compliant Device for Privileged Roles
+Target: Microsoft Azure Management, Microsoft Intune,
+        Microsoft Entra admin center
+Users: Directory roles - Global Administrator, Intune Service Admin,
+       Privileged Role Admin, Security Admin
+Device filter: device.extensionAttribute1 -eq "PAW"
+  OR device.isCompliant -eq True
+Grant: Require compliant device
+```
+
+PAW devices should be:
+- Entra-joined (not hybrid), dedicated purpose only
+- Intune-managed with a hardened compliance policy (BitLocker enforced, Secure Boot, no local admin)
+- Assigned `extensionAttribute1 = PAW` via Intune device configuration profile
+- Not used for email, browsing, or any non-admin activity
+- Phyiscally secured when not in use
+
+> **Stryker relevance:** Even if an attacker has valid credentials and a FIDO2 key somehow, they still cannot authenticate from an arbitrary device. Only known, enrolled PAW machines can reach admin portals. This is the hardware root of trust layer.
+
+---
+
+#### Policy 9: Enforce Token Protection (Token Binding)
+
+Token protection cryptographically binds the access token issued during authentication to the specific device that performed the authentication. The binding is done using a device-resident key (TPM-backed on Windows). Even if an attacker captures the raw token via AiTM proxy or network interception, they cannot use it on a different machine because the token signature verification fails without the originating device's key.
+
+This is the most direct mitigation for AiTM-style initial access, which is the most plausible mechanism for how Handala obtained a valid admin session.
+
+**How to enable:**
+
+1. Navigate to: `Entra admin center → Protection → Conditional Access → New Policy`
+2. Configure:
+
+```
+Policy Name: REQUIRE - Token Protection for Admin Sessions
+Target: Microsoft Azure Management, Microsoft Intune,
+        Microsoft Entra admin center
+Users: Directory roles - Global Administrator, Intune Service Admin,
+       Privileged Role Admin
+Session: Require token protection for sign-in sessions
+```
+
+3. Under **Session controls**, enable **Require token protection for sign-in sessions**
+
+> **Note:** Token protection requires Windows devices with TPM 2.0 and Entra-joined status. iOS, Android, and macOS support is rolling out. Plan your rollout accordingly and test with a pilot group of admins before enforcing broadly.
+
+> **Stryker relevance:** If the attacker used AiTM phishing to steal the admin session token, token protection makes that token worthless on any device other than the one it was issued to. The attack chain stops at Step 1.
+
+---
+
+#### Combined Risk-Based CA Policy Stack
+
+Here is how all nine policies layer together against the Stryker attack chain:
+
+| Attack Step | Signal Generated | Policy That Fires |
+|---|---|---|
+| AiTM token theft for initial access | Device code flow or auth transfer used | Policies 6, 7 |
+| Stolen token replayed on attacker device | Token not bound to attacker's device | Policy 9 |
+| Compromised session flagged as risky | High sign-in risk from new location/device | Policy 3 |
+| New GA backdoor account created | Account at risk, MFA registration attempt | Policies 1, 2 |
+| GA backdoor account created via Graph/PowerShell | Graph API called by unapproved principal | Policy 4 |
+| Admin portal accessed from attacker machine | Non-PAW, non-compliant device | Policy 8 |
+| Intune wipe API called directly | ARM/Graph API with risky sign-in | Policies 3, 5 |
+
+No single policy in this list stops the attack on its own. Together, they create a situation where the attacker must clear multiple independent checks before reaching anything destructive.
 
 ---
 
@@ -895,27 +1218,37 @@ Here is the full picture, showing how each layer maps to the attack steps from S
 ║  LAYER 1 — IDENTITY                                              ║
 ║  ├─ FIDO2 hardware keys mandatory for all GA/privileged roles    ║
 ║  ├─ PIM: JIT elevation, 2hr max, approval required               ║
-║  ├─ GA creation restricted to ≤3 named IAM admins               ║
+║  ├─ GA creation restricted to 3 named IAM admins or fewer        ║
 ║  └─ Break-glass accounts: vault stored, monitored 24/7           ║
 ║                                                                  ║
-║  LAYER 2 — NETWORK / DEVICE                                      ║
-║  ├─ Entra Private Access: admin portals behind GSA tunnel        ║
-║  ├─ Conditional Access: compliant network signal required        ║
+║  LAYER 2 — CONDITIONAL ACCESS / RISK SIGNALS                     ║
+║  ├─ Block MFA registration for any user risk level               ║
+║  ├─ Block MFA registration for any sign-in risk level            ║
+║  ├─ Block ALL access for High Risk Users (no password change!)   ║
+║  ├─ Block Graph API + PowerShell for unapproved principals       ║
+║  ├─ Block Device Code Flow (all users, all apps)                 ║
+║  ├─ Block Authentication Transfer (all users, all apps)          ║
+║  ├─ Require PAW or compliant device for privileged roles         ║
+║  ├─ Require phish-resistant MFA for admin portals + ARM API      ║
+║  └─ Enforce Token Protection for privileged sessions             ║
+║                                                                  ║
+║  LAYER 3 — NETWORK / DEVICE (Entra Private Access)              ║
+║  ├─ Admin portals behind GSA tunnel (compliant network signal)   ║
 ║  ├─ Conditional Access: Intune-compliant device required         ║
 ║  └─ Enrollment endpoints kept on public path (no deadlock)       ║
 ║                                                                  ║
-║  LAYER 3 — INTUNE HARDENING                                      ║
+║  LAYER 4 — INTUNE HARDENING                                      ║
 ║  ├─ Scope tags: partition device estate by region/BU             ║
 ║  ├─ Custom wipe role: minimum permissions, scoped to region      ║
 ║  ├─ Remove wipe permission from GA/Intune Admin where possible   ║
 ║  └─ BYOD review: audit personally enrolled devices               ║
 ║                                                                  ║
-║  LAYER 4 — MULTI-ADMIN APPROVAL                                  ║
+║  LAYER 5 — MULTI-ADMIN APPROVAL                                  ║
 ║  ├─ MAA policy on Wipe, Retire, Delete                           ║
 ║  ├─ Approver group: zero overlap with requestor group            ║
-║  └─ Approvers protected by FIDO2 + GSA (same as GAs)            ║
+║  └─ Approvers protected by FIDO2 + GSA + PAW (same as GAs)      ║
 ║                                                                  ║
-║  LAYER 5 — DETECTION                                             ║
+║  LAYER 6 — DETECTION                                             ║
 ║  ├─ Sentinel: New GA assignment (real-time)                      ║
 ║  ├─ Sentinel: New account + GA within 1 hour (critical)          ║
 ║  ├─ Sentinel: GA sign-in from unmanaged device                   ║
@@ -923,19 +1256,22 @@ Here is the full picture, showing how each layer maps to the attack steps from S
 ║  ├─ Sentinel: Bulk wipe > 10 devices in 15 min                   ║
 ║  ├─ Sentinel: MAA self-approval detected                         ║
 ║  ├─ Sentinel: Break-glass account any sign-in                    ║
-║  └─ Sentinel: PIM bypass — direct GA assignment                  ║
+║  └─ Sentinel: PIM bypass, direct GA assignment                   ║
 ║                                                                  ║
-║  LAYER 6 — AUTOMATED RESPONSE                                    ║
+║  LAYER 7 — AUTOMATED RESPONSE                                    ║
 ║  ├─ Logic App: Auto-disable suspicious GA account                ║
 ║  ├─ Logic App: Notify security team + Teams channel              ║
 ║  └─ Logic App: Add Sentinel incident comment                     ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  RESULT: Attacker with stolen GA credentials cannot              ║
-║  authenticate (FIDO2), cannot reach the portal (GSA),            ║
-║  cannot elevate (PIM), cannot wipe at scale (scope tags),        ║
-║  cannot complete wipe alone (MAA), and is detected within        ║
-║  minutes if any of the above is bypassed (Sentinel).             ║
+║  replay the token (Token Protection), cannot complete            ║
+║  device code phishing (Policy 6), is blocked on high risk        ║
+║  (Policy 3), cannot register MFA on backdoor account             ║
+║  (Policies 1+2), cannot create account via Graph (Policy 4),     ║
+║  cannot reach admin portal without PAW + GSA (Layers 2+3),       ║
+║  cannot wipe at scale (scope tags), cannot wipe alone (MAA),     ║
+║  and is detected within minutes if anything slips through.       ║
 ╚══════════════════════════════════════════════════════════════════╝
 ```
 
