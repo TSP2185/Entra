@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lessons from the Stryker Cyberattack: A Practical Microsoft Defense Playbook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f8fafc;
+      --surface2: #f1f5f9;
+      --border: #e2e8f0;
+      --text: #334155;
+      --text-muted: #64748b;
+      --accent: #2563eb;
+      --accent-light: #1d4ed8;
+      --red: #dc2626;
+      --amber: #d97706;
+      --green: #16a34a;
+      --teal: #0d9488;
+      --purple: #7c3aed;
+      --heading: #0f172a;
+      --code-bg: #1e1e2e;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(135deg, #dbeafe 0%, #f0f7ff 50%, #eff6ff 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 64px 24px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(37,99,235,0.06) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(220,38,38,0.1);
+      border: 1px solid rgba(220,38,38,0.25);
+      color: #b91c1c;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(24px, 4vw, 42px);
+      font-weight: 700;
+      color: var(--heading);
+      line-height: 1.2;
+      max-width: 820px;
+      margin: 0 auto 20px;
+      letter-spacing: -0.02em;
+      position: relative;
+    }
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .hero-meta span {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .hero-meta .dot { color: var(--border); }
+    .tags {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      position: relative;
+    }
+    .tag {
+      background: rgba(37,99,235,0.08);
+      border: 1px solid rgba(37,99,235,0.2);
+      color: #1d4ed8;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: flex;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 16px;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    /* ── SIDEBAR TOC ── */
+    .toc-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 24px;
+      padding: 24px 0;
+    }
+    .toc-sidebar .toc-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      padding-left: 12px;
+    }
+    .toc-sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+    .toc-sidebar ul ul {
+      padding-left: 12px;
+    }
+    .toc-sidebar li { margin: 2px 0; }
+    .toc-sidebar a {
+      display: block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      line-height: 1.4;
+      transition: color 0.15s, background 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .toc-sidebar a:hover {
+      color: var(--accent);
+      background: rgba(37,99,235,0.07);
+      border-left-color: var(--accent);
+    }
+    .toc-sidebar ul ul a {
+      font-size: 12px;
+      padding: 3px 12px;
+    }
+
+    /* ── MAIN CONTENT ── */
+    .content {
+      flex: 1;
+      min-width: 0;
+      padding: 40px 0 80px;
+    }
+
+    /* ── QUOTE/INTRO ── */
+    .intro-quote {
+      border-left: 3px solid var(--accent);
+      background: rgba(37,99,235,0.05);
+      padding: 16px 20px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-bottom: 32px;
+      font-style: italic;
+      color: #1e40af;
+      font-size: 16px;
+    }
+
+    /* ── HEADINGS ── */
+    .content h1 { display: none; }
+    .content h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--heading);
+      margin: 56px 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: -0.01em;
+    }
+    .content h2:first-of-type { margin-top: 0; }
+    .content h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--heading);
+      margin: 32px 0 12px;
+    }
+    .content h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 24px 0 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 13px;
+    }
+
+    /* ── PARAGRAPHS ── */
+    .content p { margin-bottom: 16px; color: var(--text); }
+
+    /* ── HORIZONTAL RULE ── */
+    .content hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
+    }
+
+    /* ── INLINE CODE ── */
+    .content code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: #b45309;
+    }
+
+    /* ── CODE BLOCKS ── */
+    .content pre {
+      background: var(--code-bg) !important;
+      border: 1px solid #30363d;
+      border-radius: var(--radius);
+      padding: 20px;
+      overflow-x: auto;
+      margin: 20px 0;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .content pre code {
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      color: inherit;
+      font-size: inherit;
+    }
+    /* Language label */
+    .content pre[class*="language-"]::before,
+    .content div.highlight::before {
+      display: none;
+    }
+
+    /* ── TABLES ── */
+    .content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      font-size: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .content th {
+      background: var(--surface2);
+      color: var(--heading);
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .content td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .content tr:last-child td { border-bottom: none; }
+    .content tr:nth-child(even) td { background: rgba(0,0,0,0.025); }
+
+    /* ── LISTS ── */
+    .content ul, .content ol {
+      padding-left: 24px;
+      margin-bottom: 16px;
+    }
+    .content li { margin-bottom: 6px; }
+    .content li > ul, .content li > ol { margin-top: 6px; margin-bottom: 0; }
+
+    /* ── CALLOUTS / BLOCKQUOTES ── */
+    .content blockquote {
+      background: rgba(0,0,0,0.03);
+      border-left: 3px solid var(--border);
+      padding: 14px 18px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 20px 0;
+      color: var(--text-muted);
+    }
+    .content blockquote.callout { border-radius: var(--radius); padding: 14px 18px; }
+    .content blockquote.warning {
+      background: rgba(217,119,6,0.07);
+      border-left: 3px solid var(--amber);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: #92400e;
+    }
+    .content blockquote.info {
+      background: rgba(37,99,235,0.06);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: #1e40af;
+    }
+    .content blockquote.stryker {
+      background: rgba(220,38,38,0.06);
+      border-left: 3px solid var(--red);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: #991b1b;
+    }
+    .content blockquote.disclaimer {
+      background: rgba(124,58,237,0.06);
+      border-left: 3px solid var(--purple);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: #5b21b6;
+      font-size: 13px;
+    }
+    .content blockquote.code-note {
+      background: rgba(13,148,136,0.06);
+      border-left: 3px solid var(--teal);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: #115e59;
+      font-size: 13px;
+    }
+    .content blockquote p { color: inherit; margin-bottom: 0; }
+    .content blockquote p + p { margin-top: 8px; }
+
+    /* ── STRONG / EM ── */
+    .content strong { color: var(--heading); font-weight: 600; }
+    .content em { color: var(--text-muted); }
+
+    /* ── LINKS ── */
+    .content a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .content a:hover { text-decoration: underline; color: var(--accent-light); }
+
+    /* ── INTRO SECTION ── */
+    #introduction + p { font-size: 16px; line-height: 1.8; }
+
+    /* ── CONTROL STACK (preformatted box art) ── */
+    .content pre:has(code:not([class])) {
+      background: #1e1e2e !important;
+      border-color: #30363d;
+      color: #a0aec0;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .footer a { color: var(--accent); text-decoration: none; }
+
+
+    .content blockquote.intro-quote-block {
+      border-left: 3px solid var(--accent);
+      background: rgba(37,99,235,0.05);
+      color: #1e40af;
+      font-size: 17px;
+      font-style: italic;
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .toc-sidebar { display: none; }
+      .layout { padding: 0 16px; }
+      .content { padding: 24px 0 60px; }
+    }
+    @media (max-width: 600px) {
+      .hero { padding: 40px 16px 32px; }
+      .content pre { font-size: 12px; padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-badge">🔴 Security Incident Analysis &amp; Defense Playbook</div>
+    <h1>Lessons from the Stryker Cyberattack:<br>A Practical Microsoft Defense Playbook</h1>
+    <div class="hero-meta">
+      <span>Security Architect · Microsoft Identity &amp; Endpoint</span>
+      <span class="dot">·</span>
+      <span>March 2026</span>
+      <span class="dot">·</span>
+      <span>~30 min read</span>
+    </div>
+    <div class="tags">
+      <span class="tag">Microsoft Sentinel</span>
+      <span class="tag">Entra ID</span>
+      <span class="tag">Intune</span>
+      <span class="tag">Zero Trust</span>
+      <span class="tag">KQL</span>
+      <span class="tag">Incident Response</span>
+      <span class="tag">Global Secure Access</span>
+    </div>
+  </header>
+
+  <!-- MAIN LAYOUT -->
+  <div class="layout">
+
+    <!-- TOC SIDEBAR -->
+    <nav class="toc-sidebar">
+      <div class="toc-title">Contents</div>
+      <ul>
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#1-understanding-the-attack-chain">1. Attack Chain</a></li>
+        <li><a href="#2-protecting-global-administrator-accounts">2. Protecting GA Accounts</a>
+          <ul>
+            <li><a href="#21-enforce-phishing-resistant-mfa-fido2-for-all-gas">2.1 FIDO2 MFA</a></li>
+            <li><a href="#22-restrict-global-administrator-account-creation">2.2 Restrict GA Creation</a></li>
+            <li><a href="#23-break-glass-account-hygiene">2.3 Break-Glass</a></li>
+            <li><a href="#24-conditional-access-risky-user-and-session-controls">2.4 CA Risk Policies</a></li>
+          </ul>
+        </li>
+        <li><a href="#3-restricting-admin-portal-access-with-entra-private-access">3. Entra Private Access</a></li>
+        <li><a href="#4-locking-down-intune-device-wipe-capabilities">4. Intune Wipe Controls</a></li>
+        <li><a href="#5-multi-admin-approval-for-destructive-actions">5. Multi-Admin Approval</a></li>
+        <li><a href="#6-kql-hunting-queries-and-sentinel-alerts">6. KQL Queries</a></li>
+        <li><a href="#7-automated-response-with-logic-apps">7. Logic Apps</a></li>
+        <li><a href="#8-full-control-stack-summary">8. Control Stack</a></li>
+        <li><a href="#closing-thoughts">Closing</a></li>
+        <li><a href="#references">References</a></li>
+      </ul>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="content">
+<h1 id="lessons-from-the-stryker-cyberattack-a-practical-microsoft-defense-playbook">Lessons from the Stryker Cyberattack: A Practical Microsoft Defense Playbook</h1>
+<hr />
+<blockquote class="intro-quote-block">
+<p><em>"The attacker didn't break Microsoft. They walked in through the front door using stolen keys, and nobody was watching."</em></p>
+</blockquote>
+<hr />
+<h2 id="introduction">Introduction</h2>
+<p>On March 11, 2026, Stryker Corporation, one of the world's largest medical device manufacturers, suffered one of the most destructive cyberattacks in recent memory. A pro-Iranian hacktivist group called <strong>Handala</strong> gained administrative credentials to Stryker's Microsoft 365 tenant and used <strong>Microsoft Intune</strong>, Stryker's own device management platform, to factory-reset devices across 79 countries between 5:00 and 8:00 a.m. UTC. No malware. No ransomware. Just a compromised admin account, a newly created backdoor GA account, and a few clicks in a portal that every IT administrator has access to.</p>
+<p>56,000 employees were impacted. Manufacturing halted. Hospital supply chains stalled. Login screens across the organization were defaced with Handala's logo and propaganda messages. Employees on BYOD programs lost personal photos, password managers, and MFA apps alongside corporate data.</p>
+<p>The platform didn't fail. <strong>The access controls around it did.</strong></p>
+<p>This post walks through each control gap in the attack and gives you the specific steps to close them. Everything here uses tooling already built into Microsoft E3/E5 licensing. No third-party vendors required.</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-understanding-the-attack-chain">Understanding the Attack Chain</a></li>
+<li><a href="#2-protecting-global-administrator-accounts">Protecting Global Administrator Accounts</a></li>
+<li>2.1 Phishing-Resistant MFA (FIDO2)</li>
+<li>2.2 Restrict GA Account Creation</li>
+<li>2.3 Break-Glass Account Hygiene</li>
+<li>2.4 Conditional Access: Risky User and Session Controls</li>
+<li><a href="#3-restricting-admin-portal-access-with-entra-private-access">Restricting Admin Portal Access with Entra Private Access</a></li>
+<li><a href="#4-locking-down-intune-device-wipe-capabilities">Locking Down Intune Device Wipe Capabilities</a></li>
+<li><a href="#5-multi-admin-approval-for-destructive-actions">Multi-Admin Approval for Destructive Actions</a></li>
+<li><a href="#6-kql-hunting-queries-and-sentinel-alerts">KQL Hunting Queries and Sentinel Alerts</a></li>
+<li><a href="#7-automated-response-with-logic-apps">Automated Response with Logic Apps</a></li>
+<li><a href="#8-full-control-stack-summary">Full Control Stack Summary</a></li>
+</ol>
+<hr />
+<h2 id="1-understanding-the-attack-chain">1. Understanding the Attack Chain</h2>
+<blockquote class="callout warning">
+<p>⚠️ <strong>Disclaimer:</strong> No official attack chain has been publicly released by Stryker Corporation or Microsoft. The reconstruction below is based solely on reporting from public sources including <a href="https://www.bleepingcomputer.com/news/security/stryker-attack-wiped-tens-of-thousands-of-devices-no-malware-needed/">BleepingComputer</a>, <a href="https://krebsonsecurity.com/2026/03/iran-backed-hackers-claim-wiper-attack-on-medtech-firm-stryker/">KrebsOnSecurity</a>, <a href="https://www.cybersecuritydive.com/news/stryker-attack-device-management-microsoft-iran/814816/">Cybersecurity Dive</a>, <a href="https://arcticwolf.com/resources/blog/stryker-systems-disrupted-cyber-attack-handala-group-claims-responsibility/">Arctic Wolf</a>, and <a href="https://therecord.media/stryker-cyberattack-impact-iran">The Record</a>. Some steps are inferred from the nature of the attack and available evidence. This is a best-effort reconstruction for defensive learning purposes only. Treat it as a working hypothesis, not confirmed fact.</p>
+</blockquote>
+<hr />
+<h3 id="reconstructed-attack-chain">Reconstructed Attack Chain</h3>
+<p>Before building defenses, understand what the available evidence suggests happened, step by step:</p>
+<p>```
+[1] INITIAL ACCESS — Vector unconfirmed
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Handala obtained valid credentials for at least one         │
+    │ Stryker administrator account.                              │
+    │                                                             │
+    │ Likely method: phishing, credential stuffing, AiTM proxy,  │
+    │ or third-party/supply chain breach — not confirmed.         │
+    │                                                             │
+    │ Source: BleepingComputer (source familiar with attack)      │
+    └─────────────────────────────────────────────────────────────┘
+    ⚠️ Control gap: No phishing-resistant MFA on admin accounts</p>
+<p>[2] AUTHENTICATION — MFA bypassed or absent
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Attacker successfully authenticated to the Microsoft 365    │
+    │ tenant using the compromised admin credentials.             │
+    │                                                             │
+    │ MFA was either not enforced, or bypassed via token theft /  │
+    │ SIM swap / AiTM — exact method not confirmed publicly.      │
+    └─────────────────────────────────────────────────────────────┘
+    ⚠️ Control gap: Weak or absent MFA on privileged accounts</p>
+<p>[3] PRIVILEGE CONFIRMATION — GA access verified
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Attacker confirmed the compromised account held Global      │
+    │ Administrator privileges, which provide unrestricted access │
+    │ to Microsoft Intune by inheritance.                         │
+    └─────────────────────────────────────────────────────────────┘
+    ⚠️ Control gap: Standing GA access, no JIT/PIM controls</p>
+<p>[4] PERSISTENCE — New GA backdoor account created
+    ┌─────────────────────────────────────────────────────────────┐
+    │ ★ KEY STEP — reported by BleepingComputer                   │
+    │                                                             │
+    │ Before executing the wipe, the attacker created a NEW       │
+    │ Global Administrator account in the tenant.                 │
+    │                                                             │
+    │ This is a standard attacker persistence technique:          │
+    │ even if the original compromised account is detected and    │
+    │ its password reset, the backdoor GA account survives and    │
+    │ retains full tenant access.                                 │
+    │                                                             │
+    │ Source: BleepingComputer — source familiar with the attack  │
+    └─────────────────────────────────────────────────────────────┘
+    ⚠️ Control gap: No alert on new GA account creation,
+                   no PIM approval required for GA assignment,
+                   no restriction on GA account creation</p>
+<p>[5] MASS WIPE EXECUTION — Intune abused at scale
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Between 5:00 and 8:00 a.m. UTC on March 11, the attacker   │
+    │ used the Intune admin console to issue factory reset / wipe │
+    │ commands across the device estate.                          │
+    │                                                             │
+    │ ~80,000 devices confirmed wiped (BleepingComputer source).  │
+    │ Handala claimed 200,000+ including servers and mobiles.     │
+    │                                                             │
+    │ No approval required. No second human in the loop.         │
+    │ In some departments up to 95% of devices were erased.       │
+    │                                                             │
+    │ Login screens defaced with Handala's logo and propaganda.   │
+    │                                                             │
+    │ Sources: BleepingComputer, ProArch, Arctic Wolf             │
+    └─────────────────────────────────────────────────────────────┘
+    ⚠️ Control gap: No Multi-Admin Approval for wipe actions,
+                   no scope tag partitioning, no bulk wipe alert,
+                   no GSA/compliant device requirement for admin portal</p>
+<p>[6] CLAIMED EXFILTRATION — Unconfirmed
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Handala claimed to have stolen ~50 terabytes of data.       │
+    │ Stryker's investigation found NO evidence of data           │
+    │ exfiltration at time of writing.                            │
+    │                                                             │
+    │ Sources: Stryker official statement, The Record             │
+    └─────────────────────────────────────────────────────────────┘
+```</p>
+<h3 id="attack-chain-summary-what-each-step-exploited">Attack Chain Summary: What Each Step Exploited</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What Was Missing</th>
+<th>Section That Fixes It</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AiTM token theft for initial access</td>
+<td>Token Protection, Block Device Code Flow</td>
+<td>§2.4 (Policies 6, 9)</td>
+</tr>
+<tr>
+<td>Stolen token replayed on attacker device</td>
+<td>Token bound to originating device</td>
+<td>§2.4 (Policy 9)</td>
+</tr>
+<tr>
+<td>Compromised admin session not blocked</td>
+<td>Block High Risk Users</td>
+<td>§2.4 (Policy 3)</td>
+</tr>
+<tr>
+<td>Standard MFA bypassable</td>
+<td>Phishing-resistant MFA (FIDO2)</td>
+<td>§2.1</td>
+</tr>
+<tr>
+<td>Standing GA access, no approval</td>
+<td>PIM JIT elevation with approval</td>
+<td>§2.2</td>
+</tr>
+<tr>
+<td><strong>New GA backdoor account created</strong></td>
+<td><strong>GA creation restriction + Graph blocked + alert</strong></td>
+<td><strong>§2.2, §2.4 (Policy 4), §6.1, §6.2</strong></td>
+</tr>
+<tr>
+<td><strong>MFA registered on backdoor account</strong></td>
+<td><strong>Block MFA registration for risky sessions</strong></td>
+<td><strong>§2.4 (Policies 1, 2)</strong></td>
+</tr>
+<tr>
+<td>Admin portal reachable from any device</td>
+<td>Entra Private Access + GSA + PAW</td>
+<td>§2.4 (Policy 8), §3</td>
+</tr>
+<tr>
+<td>Unrestricted Intune wipe access</td>
+<td>Scope tags + custom wipe role</td>
+<td>§4.2, §4.3</td>
+</tr>
+<tr>
+<td>No second human in wipe workflow</td>
+<td>Multi-Admin Approval</td>
+<td>§5</td>
+</tr>
+<tr>
+<td>No detection or response</td>
+<td>Sentinel queries + Logic App</td>
+<td>§6, §7</td>
+</tr>
+</tbody>
+</table>
+<p>Each step had a gap that could have been closed with controls most organizations already have licensed. The sections below work through each one.</p>
+<hr />
+<h2 id="2-protecting-global-administrator-accounts">2. Protecting Global Administrator Accounts</h2>
+<h3 id="21-enforce-phishing-resistant-mfa-fido2-for-all-gas">2.1 Enforce Phishing-Resistant MFA (FIDO2) for All GAs</h3>
+<p>Standard MFA (SMS, authenticator app push) can be bypassed via phishing, SIM swap, and adversary-in-the-middle (AiTM) attacks. For Global Administrators, the only acceptable MFA is <strong>phishing-resistant</strong>:</p>
+<ul>
+<li><strong>FIDO2 hardware security keys</strong> (YubiKey 5 series, Feitian, etc.)</li>
+<li><strong>Windows Hello for Business</strong> (device-bound, biometric)</li>
+<li><strong>Certificate-based authentication</strong> with smartcard</li>
+</ul>
+<p>FIDO2 keys are cryptographically bound to both the physical device and the specific domain. Even if an attacker has your password and a TOTP code, they cannot authenticate without the physical key in hand.</p>
+<p><strong>How to enforce FIDO2 for GA accounts:</strong></p>
+<p><strong>Step 1: Enable FIDO2 in the Authentication Methods Policy</strong></p>
+<ol>
+<li>Navigate to: <code>Entra admin center → Protection → Authentication methods → Policies</code></li>
+<li>Select <strong>FIDO2 security key</strong></li>
+<li>Set <strong>Enable</strong> to <code>Yes</code></li>
+<li>Under <strong>Target</strong>, select your GA group or All Users</li>
+<li>Configure:</li>
+<li>Allow self-service setup: <code>Yes</code> (for initial rollout)</li>
+<li>Enforce attestation: <code>Yes</code> (ensures key is from a known manufacturer)</li>
+<li>Key restrictions: <code>Yes</code> → add your approved AAGUID list (YubiKey, Feitian, etc.)</li>
+<li>Save</li>
+</ol>
+<p><strong>Step 2: Create a Conditional Access Policy requiring FIDO2 for GA roles</strong></p>
+<ol>
+<li>Navigate to: <code>Entra admin center → Protection → Conditional Access → New Policy</code></li>
+<li><strong>Name:</strong> <code>REQUIRE - Phishing-Resistant MFA for Global Admins</code></li>
+<li><strong>Users:</strong> Include → Directory roles → Global Administrator, Privileged Role Administrator, Intune Service Administrator</li>
+<li><strong>Target resources:</strong> All cloud apps</li>
+<li><strong>Grant:</strong> Require authentication strength → <strong>Phishing-resistant MFA</strong></li>
+<li><strong>Enable policy:</strong> On (test in Report-only first)</li>
+</ol>
+<p><code>json
+{
+  "displayName": "REQUIRE - Phishing-Resistant MFA for Global Admins",
+  "state": "enabled",
+  "conditions": {
+    "users": {
+      "includeRoles": [
+        "62e90394-69f5-4237-9190-012177145e10",
+        "e8611ab8-c189-46e8-94e1-60213ab1f814",
+        "3a2c62db-5318-420d-8d74-23affee5d9d5"
+      ]
+    },
+    "applications": {
+      "includeApplications": ["All"]
+    }
+  },
+  "grantControls": {
+    "operator": "AND",
+    "authenticationStrength": {
+      "id": "00000000-0000-0000-0000-000000000004"
+    }
+  }
+}</code></p>
+<blockquote class="callout code-note">
+<p><strong>Role GUIDs:</strong> Global Administrator = <code>62e90394-69f5-4237-9190-012177145e10</code>, Privileged Role Administrator = <code>e8611ab8-c189-46e8-94e1-60213ab1f814</code>, Intune Service Administrator = <code>3a2c62db-5318-420d-8d74-23affee5d9d5</code></p>
+</blockquote>
+<hr />
+<h3 id="22-restrict-global-administrator-account-creation">2.2 Restrict Global Administrator Account Creation</h3>
+<p>Attackers who gain GA access routinely create additional GA accounts as persistence backdoors. This way, even if you detect and reset the original compromised account, they still have a live foothold.</p>
+<p><strong>Step 1: Enable PIM for the GA role with Approval Required</strong></p>
+<ol>
+<li>Navigate to: <code>Entra admin center → Identity Governance → Privileged Identity Management → Entra Roles</code></li>
+<li>Select <strong>Global Administrator</strong></li>
+<li>Click <strong>Settings</strong> → Edit</li>
+<li>Configure:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Activation maximum duration</td>
+<td>2 hours</td>
+</tr>
+<tr>
+<td>Require justification on activation</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Require approval to activate</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Approvers</td>
+<td>[Dedicated security group, not GA members themselves]</td>
+</tr>
+<tr>
+<td>Require MFA on activation</td>
+<td>Yes (phishing-resistant)</td>
+</tr>
+<tr>
+<td>Require ticket information</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>Under <strong>Assignment</strong> tab:</li>
+<li>Allow permanent eligible assignment: <code>No</code></li>
+<li>Allow permanent active assignment: <code>No</code></li>
+<li>Expire active assignments after: <code>8 hours</code></li>
+</ol>
+<p><strong>Step 2: Alert on any direct GA assignment (bypassing PIM)</strong></p>
+<p>Any attempt to assign GA outside of PIM is a red flag. Configure this in Sentinel (query in Section 6).</p>
+<p><strong>Step 3: Restrict who can grant GA assignments</strong></p>
+<p>By default, any existing GA can assign GA to others. Restrict this:</p>
+<ol>
+<li>Navigate to: <code>Entra admin center → Roles and administrators → Role settings</code></li>
+<li>Under <strong>Privileged Role Administrator</strong>, restrict activation to a named group of 3 people or fewer</li>
+<li>This means only designated IAM admins can elevate others to GA, even if a GA account gets compromised</li>
+</ol>
+<hr />
+<h3 id="23-break-glass-account-hygiene">2.3 Break-Glass Account Hygiene</h3>
+<p>Break-glass accounts are your emergency access accounts for when PIM or Conditional Access locks everyone out. A few non-negotiable rules:</p>
+<p><strong>Requirements for break-glass accounts:</strong></p>
+<ul>
+<li>Create <strong>exactly 2</strong> break-glass accounts per tenant</li>
+<li>Use <code>*.onmicrosoft.com</code> UPN. Do NOT federate to your identity provider.</li>
+<li>Exclude from <strong>all</strong> Conditional Access policies (including GSA and FIDO2 requirements)</li>
+<li>Use <strong>long randomly generated passwords</strong> (32+ characters) stored in a physical vault (not a password manager)</li>
+<li>Assign a FIDO2 key stored separately from the password, in a physically secured location</li>
+<li><strong>Never use for day-to-day tasks.</strong> Any sign-in should trigger an immediate P1 alert.</li>
+</ul>
+<p><strong>Monitoring break-glass:</strong></p>
+<p><code>kql
+SigninLogs
+| where UserPrincipalName in ("breakglass1@contoso.onmicrosoft.com",
+                               "breakglass2@contoso.onmicrosoft.com")
+| project TimeGenerated, UserPrincipalName, IPAddress,
+          Location, ResultType, ResultDescription
+| order by TimeGenerated desc</code></p>
+<p>Any result from this query should be treated as a critical security event.</p>
+<hr />
+<h3 id="24-conditional-access-risky-user-and-session-controls">2.4 Conditional Access: Risky User and Session Controls</h3>
+<p>The controls in sections 2.1-2.3 harden the accounts themselves. This section covers the CA policies that act on <strong>runtime signals</strong> — what Entra ID Protection and Microsoft Defender observe during and after authentication. These would have caught or blocked the Stryker attack at multiple points even if credentials were already compromised.</p>
+<blockquote class="callout info">
+<p><strong>Where these fit in the Stryker chain:</strong> The attacker authenticated successfully (gap in 2.1). Once inside, they created a new GA account and registered authentication methods on it. Entra ID Protection would have generated risk signals on that session. None of those signals were acted on because the policies below did not exist. Each one closes a specific window.</p>
+</blockquote>
+<hr />
+<h4 id="policy-1-block-mfa-registration-for-user-risk-any-level">Policy 1: Block MFA Registration for User Risk (Any Level)</h4>
+<p>When an attacker creates a backdoor GA account, the first thing they do is register authentication methods on it so they can use it independently. If that new account, or the session creating it, carries any user risk signal, blocking MFA registration prevents the attacker from arming the backdoor.</p>
+<p>Setting this to block at Low/Medium/High is intentionally aggressive for security info registration. The reasoning is that registering MFA is a high-impact action. It should never happen from a session that Entra considers risky at any level.</p>
+<p><strong>Configuration:</strong>
+<code>Policy Name: BLOCK - MFA Registration for Risky Users
+Target: Security info registration (User Actions)
+Users: All Users
+User Risk: High, Medium, Low
+Grant: Block access</code></p>
+<p><code>json
+{
+  "displayName": "BLOCK - MFA Registration for Risky Users",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": {
+      "includeUserActions": ["urn:user:registersecurityinfo"]
+    },
+    "userRiskLevels": ["high", "medium", "low"]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}</code></p>
+<blockquote class="callout stryker">
+<p><strong>Stryker relevance:</strong> Blocks the attacker from registering MFA on the newly created backdoor GA account if that account or session carries any risk signal. Without MFA registered, the backdoor account cannot pass CA policies requiring MFA — it is unusable.</p>
+</blockquote>
+<hr />
+<h4 id="policy-2-block-mfa-registration-for-sign-in-risk-any-level">Policy 2: Block MFA Registration for Sign-in Risk (Any Level)</h4>
+<p>Mirrors Policy 1 but fires on the sign-in risk signal rather than user risk. Sign-in risk is evaluated per session and responds faster to real-time anomalies like unfamiliar IP, atypical travel, and anomalous token properties.</p>
+<p><code>Policy Name: BLOCK - MFA Registration for Risky Sign-ins
+Target: Security info registration (User Actions)
+Users: All Users
+Sign-in Risk: High, Medium, Low
+Grant: Block access</code></p>
+<p><code>json
+{
+  "displayName": "BLOCK - MFA Registration for Risky Sign-ins",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": {
+      "includeUserActions": ["urn:user:registersecurityinfo"]
+    },
+    "signInRiskLevels": ["high", "medium", "low"]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}</code></p>
+<blockquote class="callout stryker">
+<p><strong>Stryker relevance:</strong> The initial admin session from an attacker in Iran accessing a US-based tenant would generate a high sign-in risk score from Entra ID Protection near-immediately. This policy blocks that session from registering anything.</p>
+</blockquote>
+<hr />
+<h4 id="policy-3-block-high-risk-users-from-all-access">Policy 3: Block High Risk Users from All Access</h4>
+<p>This is the most impactful policy in the set. When Entra ID Protection assigns High user risk to an account, no access to any app is permitted until risk is remediated. Do <strong>not</strong> configure this as "require password change" — an attacker who controls the session can complete the password change themselves and self-remediate the risk signal. Block entirely and require an admin to investigate before restoring access.</p>
+<p><code>Policy Name: BLOCK - High Risk User All Apps
+Target: All cloud apps
+Users: All Users
+User Risk: High
+Grant: Block access</code></p>
+<p><code>json
+{
+  "displayName": "BLOCK - High Risk User All Apps",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": { "includeApplications": ["All"] },
+    "userRiskLevels": ["high"]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}</code></p>
+<blockquote class="callout stryker">
+<p><strong>Stryker relevance:</strong> A compromised admin account with credentials in a breach database, or showing sign-in behavior from a new country with an unknown device, would be elevated to High user risk by Entra ID Protection. This policy terminates that session before anything destructive can happen. The key point: <strong>do not use password change as remediation here</strong>. Require a security team review before the account is re-enabled.</p>
+</blockquote>
+<hr />
+<h4 id="policy-4-block-microsoft-graph-and-powershell-for-unapproved-users">Policy 4: Block Microsoft Graph and PowerShell for Unapproved Users</h4>
+<p>The new backdoor GA account in the Stryker attack was almost certainly created via Microsoft Graph API or PowerShell rather than the Entra portal — it is faster, scriptable, and harder to spot in real-time. Graph API access for admin operations should be restricted to a named set of approved service principals and admin accounts. Regular users, newly created accounts, and unknown principals should not be able to call the Graph API at all.</p>
+<p><code>Policy Name: BLOCK - Graph API and PowerShell for Unapproved Users
+Target: Microsoft Graph, Azure Active Directory PowerShell,
+        Microsoft Azure PowerShell
+Users: All Users
+Exclude: [Approved-GraphAdmins security group]
+Grant: Block access</code></p>
+<p><code>json
+{
+  "displayName": "BLOCK - Graph API and PowerShell Unapproved Users",
+  "state": "enabled",
+  "conditions": {
+    "users": {
+      "includeUsers": ["All"],
+      "excludeGroups": ["&lt;Approved-GraphAdmins-Group-ObjectId&gt;"]
+    },
+    "applications": {
+      "includeApplications": [
+        "00000003-0000-0000-c000-000000000000",
+        "1b730954-1685-4b74-9bfd-dac224a7b894",
+        "1950a258-227b-4e31-a9cf-717495945fc2"
+      ]
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}</code></p>
+<blockquote class="callout code-note">
+<p>App GUIDs: Microsoft Graph = <code>00000003-0000-0000-c000-000000000000</code>, Azure AD PowerShell = <code>1b730954-1685-4b74-9bfd-dac224a7b894</code>, Azure PowerShell = <code>1950a258-227b-4e31-a9cf-717495945fc2</code></p>
+<p><strong>Stryker relevance:</strong> Blocks the attacker from using Graph API to create the backdoor GA account or to call the Intune management API (<code>/deviceManagement/managedDevices/{id}/wipe</code>) directly — an alternative path to triggering wipe actions that bypasses the Intune portal entirely.</p>
+</blockquote>
+<hr />
+<h4 id="policy-5-require-phish-resistant-mfa-for-admin-portals-and-azure-management-api">Policy 5: Require Phish-Resistant MFA for Admin Portals and Azure Management API</h4>
+<p>This was covered in section 2.1 from the authentication methods angle. The CA policy angle adds one critical target: <strong>Windows Azure Management API</strong>. This is the service principal that gates access to the Azure Resource Manager, ARM templates, and the Intune Graph API backend. Without this in scope, an attacker who bypasses the portal can still call the API directly.</p>
+<p>```
+Target Apps to include:
+  - Microsoft Azure Management (portal.azure.com, ARM API)
+  - Microsoft Intune (endpoint.microsoft.com)
+  - Windows Azure Service Management API
+  - Microsoft Graph (for admin operations)</p>
+<p>Authentication Strength: Phishing-resistant MFA
+```</p>
+<blockquote class="callout stryker">
+<p><strong>Stryker relevance:</strong> Ensures that even if an attacker reaches the API layer rather than the browser portal, they still face the same phishing-resistant MFA requirement.</p>
+</blockquote>
+<hr />
+<h4 id="policy-6-block-device-code-flow">Policy 6: Block Device Code Flow</h4>
+<p>Device code flow is a legitimate OAuth 2.0 flow designed for devices without browsers (smart TVs, CLI tools). Attackers have weaponized it into a phishing technique: send the victim a device code, wait for them to enter it at <code>microsoft.com/devicelogin</code>, and capture the resulting token. The token is then valid on any device, not bound to the victim's machine.</p>
+<p>This is one of the most common initial access vectors in Microsoft 365 environments today.</p>
+<p><code>Policy Name: BLOCK - Device Code Flow All Users
+Target: All cloud apps
+Users: All Users
+Authentication Flow: Device Code Flow
+Grant: Block access</code></p>
+<p><code>json
+{
+  "displayName": "BLOCK - Device Code Flow",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": { "includeApplications": ["All"] },
+    "authenticationFlows": {
+      "transferMethods": "deviceCodeFlow"
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}</code></p>
+<blockquote class="callout stryker">
+<p><strong>Stryker relevance:</strong> If Handala used device code phishing to capture the initial admin token, this policy eliminates that vector entirely. No device code flow means no token capture without the victim's device.</p>
+</blockquote>
+<hr />
+<h4 id="policy-7-block-authentication-transfer">Policy 7: Block Authentication Transfer</h4>
+<p>Authentication Transfer (also called Cross-Device Flow in some documentation) allows a user to transfer an authenticated session from one device to another. Attackers can abuse this to move a legitimate user's session into an attacker-controlled context, effectively achieving the same outcome as token theft without needing to intercept the token in transit.</p>
+<p><code>Policy Name: BLOCK - Authentication Transfer All Users
+Target: All cloud apps
+Users: All Users
+Authentication Flow: Authentication Transfer
+Grant: Block access</code></p>
+<p><code>json
+{
+  "displayName": "BLOCK - Authentication Transfer",
+  "state": "enabled",
+  "conditions": {
+    "users": { "includeUsers": ["All"] },
+    "applications": { "includeApplications": ["All"] },
+    "authenticationFlows": {
+      "transferMethods": "authenticationTransfer"
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}</code></p>
+<blockquote class="callout stryker">
+<p><strong>Stryker relevance:</strong> Defense-in-depth against session relay and cross-device hijacking. Pairs directly with Policy 6 to close both ends of the token theft surface.</p>
+</blockquote>
+<hr />
+<h4 id="policy-8-privileged-access-workstations-paws-or-compliant-device-for-admins">Policy 8: Privileged Access Workstations (PAWs) or Compliant Device for Admins</h4>
+<p>The GSA policy in Section 3 requires a managed, compliant device to reach admin portals. PAWs take this further. A PAW is a dedicated, hardened workstation used exclusively for admin tasks. It has no email client, no general internet browsing, no productivity apps, and a separate admin identity that is only used on that machine.</p>
+<p>The CA policy layer for PAWs works by requiring Entra-joined devices from a named "PAW" group:</p>
+<p><code>Policy Name: REQUIRE - PAW or Compliant Device for Privileged Roles
+Target: Microsoft Azure Management, Microsoft Intune,
+        Microsoft Entra admin center
+Users: Directory roles - Global Administrator, Intune Service Admin,
+       Privileged Role Admin, Security Admin
+Device filter: device.extensionAttribute1 -eq "PAW"
+  OR device.isCompliant -eq True
+Grant: Require compliant device</code></p>
+<p>PAW devices should be:
+- Entra-joined (not hybrid), dedicated purpose only
+- Intune-managed with a hardened compliance policy (BitLocker enforced, Secure Boot, no local admin)
+- Assigned <code>extensionAttribute1 = PAW</code> via Intune device configuration profile
+- Not used for email, browsing, or any non-admin activity
+- Phyiscally secured when not in use</p>
+<blockquote class="callout stryker">
+<p><strong>Stryker relevance:</strong> Even if an attacker has valid credentials and a FIDO2 key somehow, they still cannot authenticate from an arbitrary device. Only known, enrolled PAW machines can reach admin portals. This is the hardware root of trust layer.</p>
+</blockquote>
+<hr />
+<h4 id="policy-9-enforce-token-protection-token-binding">Policy 9: Enforce Token Protection (Token Binding)</h4>
+<p>Token protection cryptographically binds the access token issued during authentication to the specific device that performed the authentication. The binding is done using a device-resident key (TPM-backed on Windows). Even if an attacker captures the raw token via AiTM proxy or network interception, they cannot use it on a different machine because the token signature verification fails without the originating device's key.</p>
+<p>This is the most direct mitigation for AiTM-style initial access, which is the most plausible mechanism for how Handala obtained a valid admin session.</p>
+<p><strong>How to enable:</strong></p>
+<ol>
+<li>Navigate to: <code>Entra admin center → Protection → Conditional Access → New Policy</code></li>
+<li>Configure:</li>
+</ol>
+<p><code>Policy Name: REQUIRE - Token Protection for Admin Sessions
+Target: Microsoft Azure Management, Microsoft Intune,
+        Microsoft Entra admin center
+Users: Directory roles - Global Administrator, Intune Service Admin,
+       Privileged Role Admin
+Session: Require token protection for sign-in sessions</code></p>
+<ol>
+<li>Under <strong>Session controls</strong>, enable <strong>Require token protection for sign-in sessions</strong></li>
+</ol>
+<blockquote class="callout info">
+<p><strong>Note:</strong> Token protection requires Windows devices with TPM 2.0 and Entra-joined status. iOS, Android, and macOS support is rolling out. Plan your rollout accordingly and test with a pilot group of admins before enforcing broadly.</p>
+<p><strong>Stryker relevance:</strong> If the attacker used AiTM phishing to steal the admin session token, token protection makes that token worthless on any device other than the one it was issued to. The attack chain stops at Step 1.</p>
+</blockquote>
+<hr />
+<h4 id="combined-risk-based-ca-policy-stack">Combined Risk-Based CA Policy Stack</h4>
+<p>Here is how all nine policies layer together against the Stryker attack chain:</p>
+<table>
+<thead>
+<tr>
+<th>Attack Step</th>
+<th>Signal Generated</th>
+<th>Policy That Fires</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AiTM token theft for initial access</td>
+<td>Device code flow or auth transfer used</td>
+<td>Policies 6, 7</td>
+</tr>
+<tr>
+<td>Stolen token replayed on attacker device</td>
+<td>Token not bound to attacker's device</td>
+<td>Policy 9</td>
+</tr>
+<tr>
+<td>Compromised session flagged as risky</td>
+<td>High sign-in risk from new location/device</td>
+<td>Policy 3</td>
+</tr>
+<tr>
+<td>New GA backdoor account created</td>
+<td>Account at risk, MFA registration attempt</td>
+<td>Policies 1, 2</td>
+</tr>
+<tr>
+<td>GA backdoor account created via Graph/PowerShell</td>
+<td>Graph API called by unapproved principal</td>
+<td>Policy 4</td>
+</tr>
+<tr>
+<td>Admin portal accessed from attacker machine</td>
+<td>Non-PAW, non-compliant device</td>
+<td>Policy 8</td>
+</tr>
+<tr>
+<td>Intune wipe API called directly</td>
+<td>ARM/Graph API with risky sign-in</td>
+<td>Policies 3, 5</td>
+</tr>
+</tbody>
+</table>
+<p>No single policy in this list stops the attack on its own. Together, they create a situation where the attacker must clear multiple independent checks before reaching anything destructive.</p>
+<hr />
+<h2 id="3-restricting-admin-portal-access-with-entra-private-access">3. Restricting Admin Portal Access with Entra Private Access</h2>
+<p>This control would have stopped the Stryker attack cold, even with valid stolen credentials. The idea is straightforward: <strong>admin portals are unreachable unless the device is managed, compliant, and running the Global Secure Access client.</strong> No client, no portal, end of story.</p>
+<h3 id="31-architecture-overview">3.1 Architecture Overview</h3>
+<p>```
+Attacker with stolen credentials
+  → No GSA client installed
+  → Tries to reach portal.azure.com / intune.microsoft.com
+  → Conditional Access: "Compliant Network" signal absent
+  → ACCESS DENIED — portal never loads</p>
+<p>Legitimate admin
+  → Managed device + GSA client running
+  → "Compliant Network" signal present in token
+  → FIDO2 challenge passed
+  → PIM elevation approved
+  → Admin portal accessible
+```</p>
+<h3 id="32-what-to-put-behind-private-access-vs-what-to-keep-public">3.2 What to Put Behind Private Access vs. What to Keep Public</h3>
+<blockquote class="callout warning">
+<p>⚠️ <strong>Critical:</strong> Do NOT proxy device enrollment endpoints through Private Access. This creates a bootstrapping deadlock where new devices can never enroll.</p>
+</blockquote>
+<p><strong>Put behind Private Access (admin consoles only):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>entra.microsoft.com</code></td>
+<td>Entra admin portal</td>
+</tr>
+<tr>
+<td><code>aad.portal.azure.com</code></td>
+<td>Legacy AAD portal</td>
+</tr>
+<tr>
+<td><code>portal.azure.com</code></td>
+<td>Azure portal</td>
+</tr>
+<tr>
+<td><code>endpoint.microsoft.com</code></td>
+<td>Intune admin console</td>
+</tr>
+<tr>
+<td><code>security.microsoft.com</code></td>
+<td>Defender / Sentinel portal</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Keep on public internet path (device enrollment):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enrollment.manage.microsoft.com</code></td>
+<td>Intune MDM enrollment</td>
+</tr>
+<tr>
+<td><code>EnterpriseEnrollment.&lt;yourdomain&gt;.com</code></td>
+<td>Auto-discovery</td>
+</tr>
+<tr>
+<td><code>device.login.microsoftonline.com</code></td>
+<td>Entra device registration</td>
+</tr>
+<tr>
+<td><code>enterpriseregistration.windows.net</code></td>
+<td>Hybrid join</td>
+</tr>
+<tr>
+<td><code>login.microsoftonline.com</code></td>
+<td>AAD authentication (all devices)</td>
+</tr>
+<tr>
+<td><code>ztd.dds.microsoft.com</code></td>
+<td>Autopilot Zero Touch</td>
+</tr>
+<tr>
+<td><code>cs.dds.microsoft.com</code></td>
+<td>Autopilot device provisioning</td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-step-by-step-configure-entra-private-access-for-admin-portals">3.3 Step-by-Step: Configure Entra Private Access for Admin Portals</h3>
+<p><strong>Step 1: Enable Global Secure Access in your tenant</strong></p>
+<ol>
+<li>Navigate to: <code>Entra admin center → Global Secure Access → Get started</code></li>
+<li>Activate Global Secure Access for your tenant</li>
+<li>Ensure Microsoft Entra Private Access and Microsoft Entra Internet Access licenses are assigned</li>
+</ol>
+<p><strong>Step 2: Create a Private Access Application for Admin Portals</strong></p>
+<ol>
+<li>Navigate to: <code>Entra admin center → Global Secure Access → Applications → Enterprise applications</code></li>
+<li>Click <strong>New application → Private Access</strong></li>
+<li>Configure:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td><code>Admin Portals - Restricted Access</code></td>
+</tr>
+<tr>
+<td>Connector group</td>
+<td>Your nearest connector group</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>Add application segments:</li>
+</ol>
+<p>```
+Segment 1:
+  FQDN: entra.microsoft.com
+  Port: 443
+  Protocol: HTTPS</p>
+<p>Segment 2:
+  FQDN: portal.azure.com
+  Port: 443
+  Protocol: HTTPS</p>
+<p>Segment 3:
+  FQDN: endpoint.microsoft.com
+  Port: 443
+  Protocol: HTTPS</p>
+<p>Segment 4:
+  FQDN: security.microsoft.com
+  Port: 443
+  Protocol: HTTPS
+```</p>
+<ol>
+<li>Under <strong>Users and groups</strong>, assign only your admin groups (not all users)</li>
+</ol>
+<p><strong>Step 3: Deploy the GSA Client via Intune</strong></p>
+<ol>
+<li>Navigate to: <code>Intune admin center → Apps → Windows → Add</code></li>
+<li>Select <strong>Line-of-business app</strong> or use the Microsoft Store version of the GSA client</li>
+<li>Deploy to <strong>All Devices</strong> (required, not available)</li>
+<li>This ensures GSA client is present on all managed devices before the Conditional Access policy enforces it</li>
+</ol>
+<p><strong>Step 4: Create the Conditional Access Policy</strong></p>
+<ol>
+<li>Navigate to: <code>Entra admin center → Protection → Conditional Access → New Policy</code></li>
+<li>Configure:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td><code>REQUIRE - GSA Compliant Network for Admin Portals</code></td>
+</tr>
+<tr>
+<td>Users</td>
+<td>Include: GA role, Intune Admin role, Security Admin role</td>
+</tr>
+<tr>
+<td>Target resources</td>
+<td>Microsoft Azure Management, Microsoft Intune, Microsoft Intune Enrollment</td>
+</tr>
+<tr>
+<td>Network condition</td>
+<td><strong>Not</strong> Compliant Network (Global Secure Access)</td>
+</tr>
+<tr>
+<td>Grant</td>
+<td>Block</td>
+</tr>
+</tbody>
+</table>
+<p><code>json
+{
+  "displayName": "REQUIRE - GSA Compliant Network for Admin Portals",
+  "state": "enabled",
+  "conditions": {
+    "users": {
+      "includeRoles": [
+        "62e90394-69f5-4237-9190-012177145e10",
+        "3a2c62db-5318-420d-8d74-23affee5d9d5",
+        "194ae4cb-b126-40b2-bd5b-6091b380977d"
+      ]
+    },
+    "applications": {
+      "includeApplications": [
+        "797f4846-ba00-4fd7-ba43-dac1f8f63013",
+        "0000000a-0000-0000-c000-000000000000"
+      ]
+    },
+    "locations": {
+      "includeLocations": ["All"],
+      "excludeLocations": ["AllCompliantNetwork"]
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}</code></p>
+<p><strong>Step 5: Add Device Compliance Requirement</strong></p>
+<p>Layer a second policy on top:</p>
+<p><code>Name: REQUIRE - Compliant Device for Admin Portals
+Users: Same admin roles
+Target resources: Same admin apps
+Conditions: All platforms
+Grant:
+  - Require device to be marked compliant
+  - Require Entra joined device
+  - Operator: AND</code></p>
+<hr />
+<h3 id="34-autopilot-and-new-device-bootstrapping">3.4 Autopilot and New Device Bootstrapping</h3>
+<p>For organizations using Windows Autopilot:</p>
+<ol>
+<li>Autopilot runs <strong>before</strong> the GSA client is installed, so ensure Autopilot endpoints stay on your public internet path and are not behind Private Access.</li>
+<li>The GSA client is deployed <strong>by Intune</strong> as part of the device configuration profile. Enrollment happens first, then GSA lands, then the full lockdown kicks in.</li>
+<li>The sequence: <code>OOBE → Autopilot → Intune Enrollment → GSA Client Deploy → Compliant Network signal active → Admin portals accessible</code></li>
+</ol>
+<p>For <strong>Hybrid Entra Join</strong> environments:
+- Add your on-premises IP ranges as a <strong>Named Location</strong> in Conditional Access and mark it as trusted
+- Exclude this named location from the GSA policy for the join registration process
+- Once joined and compliant, devices fall under the full GSA policy</p>
+<hr />
+<h2 id="4-locking-down-intune-device-wipe-capabilities">4. Locking Down Intune Device Wipe Capabilities</h2>
+<h3 id="41-roles-that-can-wipe-devices">4.1 Roles That Can Wipe Devices</h3>
+<p>Understanding which roles have wipe capability is the first step:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Wipe Access</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Global Administrator</td>
+<td>Full factory wipe + retire + delete</td>
+<td>Entire tenant</td>
+</tr>
+<tr>
+<td>Intune Service Administrator</td>
+<td>Full factory wipe + retire + delete</td>
+<td>Entire tenant</td>
+</tr>
+<tr>
+<td>Endpoint Security Manager</td>
+<td>Full wipe</td>
+<td>Entire tenant</td>
+</tr>
+<tr>
+<td>Help Desk Operator</td>
+<td>Selective wipe / retire</td>
+<td>Assigned devices only</td>
+</tr>
+<tr>
+<td>Policy and Profile Manager</td>
+<td>None</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>Read Only Operator</td>
+<td>None</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><strong>Custom Role</strong></td>
+<td>Configurable</td>
+<td>Configurable via scope tags</td>
+</tr>
+</tbody>
+</table>
+<p>The core problem is that <strong>GA and Intune Service Administrator have no built-in scope limits</strong>. They can touch every device in the tenant. That is exactly what Handala exploited.</p>
+<h3 id="42-create-a-dedicated-wipe-role-with-minimum-permissions">4.2 Create a Dedicated Wipe Role with Minimum Permissions</h3>
+<p>Instead of relying on broad built-in roles, create a custom Intune role scoped to only what is needed:</p>
+<p><strong>Step 1: Create the Custom Role</strong></p>
+<ol>
+<li>Navigate to: <code>Intune admin center → Tenant administration → Roles → Create</code></li>
+<li>Name: <code>Device Wipe Operator - Restricted</code></li>
+<li>Under <strong>Permissions</strong>, enable only:</li>
+</ol>
+<p>```
+Managed Devices:
+  ✅ Remote tasks - Wipe
+  ✅ Remote tasks - Retire
+  ✅ Remote tasks - Sync
+  ✅ View reports
+  ❌ Delete (keep separate)
+  ❌ Update properties
+  ❌ Assign (no profile changes)</p>
+<p>All other categories: ❌ disabled
+```</p>
+<ol>
+<li>Save the role</li>
+</ol>
+<p><strong>Step 2: Assign the Role with Scope Tags</strong></p>
+<ol>
+<li>Navigate to the role → <strong>Assignments</strong> → Add assignment</li>
+<li>Assign to a security group containing <strong>maximum 3 named individuals</strong></li>
+<li>Under <strong>Scope (Groups)</strong>, select only the device groups this team should manage</li>
+<li>Under <strong>Scope (Tags)</strong>, assign relevant scope tags (e.g., "Region-EMEA")</li>
+</ol>
+<p>An admin scoped to EMEA devices cannot see APAC or NA devices in their Intune console at all, let alone wipe them.</p>
+<h3 id="43-implement-scope-tags-by-regionbusiness-unit">4.3 Implement Scope Tags by Region/Business Unit</h3>
+<p>Scope tags don't get nearly enough attention. They partition your device estate so that no single credential has tenant-wide destructive reach:</p>
+<p><strong>Step 1: Create Scope Tags</strong></p>
+<ol>
+<li>Navigate to: <code>Intune admin center → Tenant administration → Roles → Scope (Tags)</code></li>
+<li>Create tags:</li>
+</ol>
+<p><code>Tag Name: Region-NorthAmerica
+Tag Name: Region-EMEA
+Tag Name: Region-APAC
+Tag Name: BU-Manufacturing
+Tag Name: BU-Clinical
+Tag Name: Priority-Critical  (servers, clinical systems)</code></p>
+<p><strong>Step 2: Apply Tags to Devices</strong></p>
+<p>Use a dynamic device group + Intune policy to auto-assign scope tags based on device attributes (country, department, device name prefix, etc.)</p>
+<p><strong>Step 3: Assign Scope Tags to Admin Roles</strong></p>
+<p>When assigning the custom wipe role, restrict each assignment to relevant scope tags. A compromised regional IT admin account then has a limited blast radius, not access to 200,000 devices across 79 countries.</p>
+<hr />
+<h2 id="5-multi-admin-approval-for-destructive-actions">5. Multi-Admin Approval for Destructive Actions</h2>
+<p>This is the one control that could have stopped the wipe outright, even with valid admin credentials in hand. A single person cannot initiate and complete a device wipe without a second human approving it first.</p>
+<h3 id="51-how-multi-admin-approval-works">5.1 How Multi-Admin Approval Works</h3>
+<p><code>Admin A → Initiates wipe on device(s)
+            ↓
+         Action enters "Pending Approval" state
+         Device is NOT wiped yet
+            ↓
+         Admin B (approver) receives email notification
+            ↓
+         Admin B reviews: Who requested? Which devices? Justification?
+            ↓
+         Admin B Approves → Wipe executes
+         Admin B Rejects  → Wipe cancelled, requestor notified</code></p>
+<h3 id="52-step-by-step-configure-multi-admin-approval">5.2 Step-by-Step: Configure Multi-Admin Approval</h3>
+<p><strong>Step 1: Create the Approver Security Group</strong></p>
+<ol>
+<li>In Entra admin center, create a security group: <code>Intune-WipeApprovers</code></li>
+<li>Add 3–5 senior security/IT staff as members</li>
+<li><strong>Critical:</strong> Keep zero overlap with the group that can <em>request</em> wipes. An attacker who compromises one account should not be able to approve their own request.</li>
+</ol>
+<p><strong>Step 2: Create the Access Policy</strong></p>
+<ol>
+<li>Navigate to: <code>Intune admin center → Tenant administration → Multi Admin Approval → Access policies</code></li>
+<li>Click <strong>Create</strong></li>
+<li>Configure:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td><code>Require Approval - Device Wipe and Retire</code></td>
+</tr>
+<tr>
+<td>Description</td>
+<td><code>All device wipe, retire, and delete actions require secondary approval</code></td>
+</tr>
+<tr>
+<td>Resource type</td>
+<td><code>Managed Devices</code></td>
+</tr>
+<tr>
+<td>Actions</td>
+<td><code>Wipe, Retire, Delete</code></td>
+</tr>
+<tr>
+<td>Approvers</td>
+<td><code>Intune-WipeApprovers</code> (security group)</td>
+</tr>
+<tr>
+<td>Notification email</td>
+<td>security-ops@contoso.com</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>Save</li>
+</ol>
+<p><strong>Step 3: Test the Policy</strong></p>
+<ol>
+<li>Log in as a non-approver admin</li>
+<li>Attempt to wipe a test device</li>
+<li>Confirm the action enters "Pending" state and does NOT execute immediately</li>
+<li>Log in as an approver and verify the approval notification and workflow</li>
+<li>Approve the action and confirm it executes</li>
+<li>Verify the audit log captures both the request and approval events</li>
+</ol>
+<h3 id="53-what-maa-protects-and-what-it-doesnt">5.3 What MAA Protects and What It Doesn't</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>MAA Protection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single compromised admin initiates mass wipe</td>
+<td>✅ Blocked, requires second approver</td>
+</tr>
+<tr>
+<td>Insider threat from one malicious admin</td>
+<td>✅ Blocked, second human required</td>
+</tr>
+<tr>
+<td>Accidental bulk wipe from misconfigured script</td>
+<td>✅ Blocked, human approval required</td>
+</tr>
+<tr>
+<td>Attacker compromises BOTH a requestor and approver</td>
+<td>❌ Not covered here, pair with FIDO2 + GSA</td>
+</tr>
+<tr>
+<td>Attacker with approver credentials approves their own wipe</td>
+<td>❌ Requires strict group separation</td>
+</tr>
+</tbody>
+</table>
+<p>MAA is a strong friction layer but it is not a standalone fix. It works best as part of the full stack described in this post.</p>
+<hr />
+<h2 id="6-kql-hunting-queries-and-sentinel-alerts">6. KQL Hunting Queries and Sentinel Alerts</h2>
+<p>All queries below target <strong>Microsoft Sentinel</strong> using the <code>AuditLogs</code>, <code>SigninLogs</code>, <code>IntuneAuditLogs</code>, and <code>IdentityInfo</code> tables. Schedule each as an <strong>Analytics Rule</strong> with the severity and frequency noted.</p>
+<hr />
+<h3 id="query-1-new-global-administrator-role-assignment">Query 1: New Global Administrator Role Assignment</h3>
+<p><strong>Risk:</strong> Backdoor GA account creation, the most common attacker persistence technique in cloud tenants.</p>
+<p><code>kql
+AuditLogs
+| where OperationName == "Add member to role"
+| where TargetResources[0].modifiedProperties has "Global Administrator"
+| extend InitiatedBy = tostring(InitiatedBy.user.userPrincipalName)
+| extend TargetUser = tostring(TargetResources[0].userPrincipalName)
+| extend TargetObjectId = tostring(TargetResources[0].id)
+| extend RoleName = tostring(
+    parse_json(tostring(TargetResources[0].modifiedProperties))
+    [0].newValue)
+| project TimeGenerated, InitiatedBy, TargetUser,
+          TargetObjectId, RoleName, CorrelationId
+| order by TimeGenerated desc</code></p>
+<p><strong>Sentinel Rule Settings:</strong>
+- Severity: High
+- Run frequency: Every 5 minutes
+- Alert threshold: &gt; 0 results
+- MITRE: Persistence → T1098.003 (Account Manipulation: Additional Cloud Roles)</p>
+<hr />
+<h3 id="query-2-new-account-created-and-ga-assigned-within-1-hour">Query 2: New Account Created and GA Assigned Within 1 Hour</h3>
+<p><strong>Risk:</strong> This is exactly the persistence pattern used in the Stryker attack. Create a fresh account, immediately elevate it to GA, and it survives any password reset on the original compromised account.</p>
+<p><code>kql
+let newAccounts = AuditLogs
+| where OperationName == "Add user"
+| project CreatedTime = TimeGenerated,
+          NewUser = tostring(TargetResources[0].userPrincipalName),
+          CreatedBy = tostring(InitiatedBy.user.userPrincipalName);
+let gaAssignments = AuditLogs
+| where OperationName == "Add member to role"
+| where TargetResources[0].modifiedProperties has "Global Administrator"
+| project AssignedTime = TimeGenerated,
+          AssignedUser = tostring(TargetResources[0].userPrincipalName),
+          AssignedBy = tostring(InitiatedBy.user.userPrincipalName);
+newAccounts
+| join kind=inner gaAssignments on $left.NewUser == $right.AssignedUser
+| where (AssignedTime - CreatedTime) between (0min .. 60min)
+| extend TimeDeltaMinutes = datetime_diff('minute', AssignedTime, CreatedTime)
+| project NewUser, CreatedTime, CreatedBy, AssignedTime,
+          AssignedBy, TimeDeltaMinutes
+| order by TimeDeltaMinutes asc</code></p>
+<p><strong>Sentinel Rule Settings:</strong>
+- Severity: <strong>Critical</strong>
+- Run frequency: Every 5 minutes
+- Alert threshold: &gt; 0 results
+- MITRE: Persistence → T1136.003 (Create Account: Cloud Account), T1098.003</p>
+<hr />
+<h3 id="query-3-global-admin-sign-in-from-non-compliant-or-unmanaged-device">Query 3: Global Admin Sign-In from Non-Compliant or Unmanaged Device</h3>
+<p><strong>Risk:</strong> A GA account signing in from outside your managed device estate. Could be an attacker on a personal machine or a BYOD device that never got enrolled in Intune.</p>
+<p><code>kql
+let gaUsers = IdentityInfo
+| where AssignedRoles has "Global Administrator"
+| summarize by AccountUPN;
+SigninLogs
+| where UserPrincipalName in (gaUsers)
+| where DeviceDetail.isCompliant == false
+    or DeviceDetail.isManaged == false
+    or isempty(DeviceDetail.deviceId)
+| extend DeviceCompliant = tostring(DeviceDetail.isCompliant)
+| extend DeviceManaged = tostring(DeviceDetail.isManaged)
+| extend DeviceId = tostring(DeviceDetail.deviceId)
+| extend OS = tostring(DeviceDetail.operatingSystem)
+| project TimeGenerated, UserPrincipalName, IPAddress,
+          Location, DeviceCompliant, DeviceManaged,
+          DeviceId, OS, ConditionalAccessStatus, ResultType
+| where ResultType == 0
+| order by TimeGenerated desc</code></p>
+<p><strong>Sentinel Rule Settings:</strong>
+- Severity: High
+- Run frequency: Every 15 minutes
+- MITRE: Initial Access → T1078 (Valid Accounts)</p>
+<hr />
+<h3 id="query-4-ga-sign-in-from-new-geography-first-seen-in-30-days">Query 4: GA Sign-In from New Geography (First Seen in 30 Days)</h3>
+<p><strong>Risk:</strong> A GA credential used from a country or region with no sign-in history. One of the cleaner indicators of account compromise.</p>
+<p><code>kql
+let lookback = 30d;
+let gaUsers = IdentityInfo
+| where AssignedRoles has "Global Administrator"
+| summarize by AccountUPN;
+let historicalLocations = SigninLogs
+| where TimeGenerated between (ago(lookback) .. ago(1d))
+| where UserPrincipalName in (gaUsers)
+| where ResultType == 0
+| summarize HistoricCountries = make_set(Location) by UserPrincipalName;
+SigninLogs
+| where TimeGenerated &gt; ago(1d)
+| where UserPrincipalName in (gaUsers)
+| where ResultType == 0
+| join kind=leftouter historicalLocations on UserPrincipalName
+| where Location !in (HistoricCountries)
+| project TimeGenerated, UserPrincipalName, IPAddress,
+          Location, HistoricCountries, ConditionalAccessStatus
+| order by TimeGenerated desc</code></p>
+<p><strong>Sentinel Rule Settings:</strong>
+- Severity: High
+- Run frequency: Every 1 hour
+- MITRE: Initial Access → T1078.004 (Cloud Accounts)</p>
+<hr />
+<h3 id="query-5-intune-bulk-device-wipe-detection">Query 5: Intune Bulk Device Wipe Detection</h3>
+<p><strong>Risk:</strong> Mass wipe in progress. This is the Stryker attack signature. The alert fires if more than 10 wipe-class actions come from a single initiator within a 15-minute window.</p>
+<p><code>kql
+IntuneAuditLogs
+| where OperationName in (
+    "Wipe",
+    "RetireDevice",
+    "DeleteDevice",
+    "FactoryReset",
+    "FreshStart",
+    "RemoteLock"
+  )
+| extend Actor = tostring(Actor)
+| extend TargetDevice = tostring(TargetObjectName)
+| summarize
+    ActionCount = count(),
+    DeviceList = make_set(TargetDevice),
+    Actions = make_set(OperationName)
+    by bin(TimeGenerated, 15m), Actor
+| where ActionCount &gt; 10
+| extend DeviceCount = array_length(DeviceList)
+| project TimeGenerated, Actor, ActionCount,
+          DeviceCount, Actions, DeviceList
+| order by ActionCount desc</code></p>
+<p><strong>Sentinel Rule Settings:</strong>
+- Severity: <strong>Critical</strong>
+- Run frequency: Every 5 minutes
+- Threshold: Tune the <code>&gt; 10</code> value based on your environment's normal baseline
+- MITRE: Impact → T1485 (Data Destruction), T1561 (Disk Wipe)</p>
+<hr />
+<h3 id="query-6-intune-multi-admin-approval-approved-by-same-person-who-requested">Query 6: Intune Multi-Admin Approval Approved by Same Person Who Requested</h3>
+<p><strong>Risk:</strong> A misconfigured access policy, or a compromised approver account used to rubber-stamp a destructive request from the same attacker.</p>
+<p><code>kql
+IntuneAuditLogs
+| where OperationName == "ApproveRequest"
+| extend ApproverUPN = tostring(Actor)
+| extend RequestId = tostring(CorrelationId)
+| join kind=inner (
+    IntuneAuditLogs
+    | where OperationName == "CreateRequest"
+    | where TargetObjectName in ("Wipe", "Retire", "Delete")
+    | extend RequesterUPN = tostring(Actor)
+    | extend RequestId = tostring(CorrelationId)
+) on RequestId
+| where ApproverUPN == RequesterUPN
+| project TimeGenerated, ApproverUPN, RequesterUPN,
+          RequestId, TargetObjectName</code></p>
+<p><strong>Sentinel Rule Settings:</strong>
+- Severity: Critical
+- Run frequency: Every 5 minutes
+- Alert threshold: &gt; 0 results (self-approval should never occur)</p>
+<hr />
+<h3 id="query-7-break-glass-account-activity">Query 7: Break-Glass Account Activity</h3>
+<p><strong>Risk:</strong> Break-glass accounts should never see activity outside a declared emergency. Any sign-in is a P1 event by default.</p>
+<p><code>kql
+// Update the list below with your actual break-glass UPNs
+let breakGlassAccounts = dynamic([
+    "breakglass1@contoso.onmicrosoft.com",
+    "breakglass2@contoso.onmicrosoft.com"
+]);
+SigninLogs
+| where UserPrincipalName in (breakGlassAccounts)
+| project TimeGenerated, UserPrincipalName, IPAddress,
+          Location, ResultType, ResultDescription,
+          ConditionalAccessStatus, DeviceDetail
+| order by TimeGenerated desc</code></p>
+<p><strong>Sentinel Rule Settings:</strong>
+- Severity: <strong>Critical</strong>
+- Run frequency: Every 5 minutes
+- Threshold: &gt; 0 results
+- Action: Immediate P1 page to security leadership</p>
+<hr />
+<h3 id="query-8-pim-bypass-direct-ga-assignment-without-eligible-role-activation">Query 8: PIM Bypass, Direct GA Assignment Without Eligible Role Activation</h3>
+<p><strong>Risk:</strong> If PIM is your gate for GA access, any direct active assignment that did not come through a PIM activation is a bypass. That means either a misconfiguration or an attacker who found a way around your controls.</p>
+<p><code>kql
+AuditLogs
+| where OperationName == "Add member to role"
+| where TargetResources[0].modifiedProperties has "Global Administrator"
+| where InitiatedBy !has "MS-PIM"
+| extend InitiatedBy = tostring(InitiatedBy.user.userPrincipalName)
+| extend TargetUser = tostring(TargetResources[0].userPrincipalName)
+| project TimeGenerated, InitiatedBy, TargetUser,
+          OperationName, CorrelationId
+| order by TimeGenerated desc</code></p>
+<p><strong>Sentinel Rule Settings:</strong>
+- Severity: High
+- Run frequency: Every 5 minutes
+- Threshold: &gt; 0 results</p>
+<hr />
+<h2 id="7-automated-response-with-logic-apps">7. Automated Response with Logic Apps</h2>
+<p>Detection without automated response is just logging. You need containment that works at 3am without someone on-call having to act. Here is a Logic App playbook that auto-disables an account when triggered by the "new account + GA assigned in 1 hour" Sentinel alert.</p>
+<h3 id="71-logic-app-auto-disable-suspicious-new-ga-account">7.1 Logic App: Auto-Disable Suspicious New GA Account</h3>
+<p><strong>Trigger:</strong> Microsoft Sentinel alert (connected via Sentinel Automation rule)</p>
+<p><code>Trigger: When a Microsoft Sentinel incident is created
+  ↓
+Condition: Alert name contains "New Account GA Assigned"
+  ↓
+Action 1: Get account details from alert entities
+  ↓
+Action 2: HTTP POST to Microsoft Graph API
+  PATCH https://graph.microsoft.com/v1.0/users/{userId}
+  Body: { "accountEnabled": false }
+  Auth: Managed Identity with User.ReadWrite.All
+  ↓
+Action 3: Add comment to Sentinel incident
+  "Account {UPN} automatically disabled pending investigation.
+   Disabled at: {timestamp}
+   Triggered by: Auto-Response Playbook v1.0"
+  ↓
+Action 4: Send email to security-ops@contoso.com
+  Subject: [AUTO-RESPONSE] GA Backdoor Account Disabled - {UPN}
+  Body: Incident details + link to Sentinel incident
+  ↓
+Action 5: Post to Teams security channel
+  Card: Incident details, affected account, action taken</code></p>
+<p><strong>How to deploy:</strong></p>
+<ol>
+<li>Navigate to: <code>Azure portal → Logic Apps → Create</code></li>
+<li>Use the <strong>Blank Logic App</strong> template</li>
+<li>Add the trigger: <code>Microsoft Sentinel → When a response to a Microsoft Sentinel alert is triggered</code></li>
+<li>Grant the Logic App a <strong>Managed Identity</strong> with:</li>
+<li><code>User.ReadWrite.All</code> in Microsoft Graph</li>
+<li><code>Microsoft Sentinel Responder</code> role</li>
+<li>In Sentinel: <code>Automation → Automation rules → Create</code></li>
+<li>Trigger: When incident is created</li>
+<li>Condition: Alert name contains your rule name</li>
+<li>Action: Run playbook → select your Logic App</li>
+</ol>
+<hr />
+<h2 id="8-full-control-stack-summary">8. Full Control Stack Summary</h2>
+<p>Here is the full picture, showing how each layer maps to the attack steps from Section 1:</p>
+<p><code>╔══════════════════════════════════════════════════════════════════╗
+║              STRYKER-PROOF MICROSOFT TENANT HARDENING            ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  LAYER 1 — IDENTITY                                              ║
+║  ├─ FIDO2 hardware keys mandatory for all GA/privileged roles    ║
+║  ├─ PIM: JIT elevation, 2hr max, approval required               ║
+║  ├─ GA creation restricted to 3 named IAM admins or fewer        ║
+║  └─ Break-glass accounts: vault stored, monitored 24/7           ║
+║                                                                  ║
+║  LAYER 2 — CONDITIONAL ACCESS / RISK SIGNALS                     ║
+║  ├─ Block MFA registration for any user risk level               ║
+║  ├─ Block MFA registration for any sign-in risk level            ║
+║  ├─ Block ALL access for High Risk Users (no password change!)   ║
+║  ├─ Block Graph API + PowerShell for unapproved principals       ║
+║  ├─ Block Device Code Flow (all users, all apps)                 ║
+║  ├─ Block Authentication Transfer (all users, all apps)          ║
+║  ├─ Require PAW or compliant device for privileged roles         ║
+║  ├─ Require phish-resistant MFA for admin portals + ARM API      ║
+║  └─ Enforce Token Protection for privileged sessions             ║
+║                                                                  ║
+║  LAYER 3 — NETWORK / DEVICE (Entra Private Access)              ║
+║  ├─ Admin portals behind GSA tunnel (compliant network signal)   ║
+║  ├─ Conditional Access: Intune-compliant device required         ║
+║  └─ Enrollment endpoints kept on public path (no deadlock)       ║
+║                                                                  ║
+║  LAYER 4 — INTUNE HARDENING                                      ║
+║  ├─ Scope tags: partition device estate by region/BU             ║
+║  ├─ Custom wipe role: minimum permissions, scoped to region      ║
+║  ├─ Remove wipe permission from GA/Intune Admin where possible   ║
+║  └─ BYOD review: audit personally enrolled devices               ║
+║                                                                  ║
+║  LAYER 5 — MULTI-ADMIN APPROVAL                                  ║
+║  ├─ MAA policy on Wipe, Retire, Delete                           ║
+║  ├─ Approver group: zero overlap with requestor group            ║
+║  └─ Approvers protected by FIDO2 + GSA + PAW (same as GAs)      ║
+║                                                                  ║
+║  LAYER 6 — DETECTION                                             ║
+║  ├─ Sentinel: New GA assignment (real-time)                      ║
+║  ├─ Sentinel: New account + GA within 1 hour (critical)          ║
+║  ├─ Sentinel: GA sign-in from unmanaged device                   ║
+║  ├─ Sentinel: GA sign-in from new geography                      ║
+║  ├─ Sentinel: Bulk wipe &gt; 10 devices in 15 min                   ║
+║  ├─ Sentinel: MAA self-approval detected                         ║
+║  ├─ Sentinel: Break-glass account any sign-in                    ║
+║  └─ Sentinel: PIM bypass, direct GA assignment                   ║
+║                                                                  ║
+║  LAYER 7 — AUTOMATED RESPONSE                                    ║
+║  ├─ Logic App: Auto-disable suspicious GA account                ║
+║  ├─ Logic App: Notify security team + Teams channel              ║
+║  └─ Logic App: Add Sentinel incident comment                     ║
+║                                                                  ║
+╠══════════════════════════════════════════════════════════════════╣
+║  RESULT: Attacker with stolen GA credentials cannot              ║
+║  replay the token (Token Protection), cannot complete            ║
+║  device code phishing (Policy 6), is blocked on high risk        ║
+║  (Policy 3), cannot register MFA on backdoor account             ║
+║  (Policies 1+2), cannot create account via Graph (Policy 4),     ║
+║  cannot reach admin portal without PAW + GSA (Layers 2+3),       ║
+║  cannot wipe at scale (scope tags), cannot wipe alone (MAA),     ║
+║  and is detected within minutes if anything slips through.       ║
+╚══════════════════════════════════════════════════════════════════╝</code></p>
+<h3 id="licensing-requirements">Licensing Requirements</h3>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Minimum License</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FIDO2 authentication methods</td>
+<td>Entra ID P1</td>
+</tr>
+<tr>
+<td>Conditional Access</td>
+<td>Entra ID P1</td>
+</tr>
+<tr>
+<td>Privileged Identity Management</td>
+<td>Entra ID P2</td>
+</tr>
+<tr>
+<td>Entra Private Access / GSA</td>
+<td>Microsoft Entra Suite or standalone</td>
+</tr>
+<tr>
+<td>Intune RBAC + Scope Tags</td>
+<td>Microsoft Intune Plan 1</td>
+</tr>
+<tr>
+<td>Multi-Admin Approval</td>
+<td>Microsoft Intune Plan 2</td>
+</tr>
+<tr>
+<td>Microsoft Sentinel</td>
+<td>Microsoft Sentinel (PAYG or commitment tier)</td>
+</tr>
+<tr>
+<td>Logic App Playbooks</td>
+<td>Azure Logic Apps (consumption plan)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="closing-thoughts">Closing Thoughts</h2>
+<p>The Stryker attack was not sophisticated. It was effective because the attacker found a high-powered weapon, Microsoft Intune, completely unguarded. The controls in this post are not cutting-edge research. They are production-ready, Microsoft-native, and available in licensing that most enterprise organizations already own.</p>
+<p>If you run Intune at scale, especially in healthcare or critical infrastructure, none of this is optional hardening. It is the floor, not the ceiling.</p>
+<p>Start with FIDO2 on all GA accounts and Multi-Admin Approval on wipe actions. Those two alone would have changed the outcome of the Stryker attack.</p>
+<hr />
+<h2 id="references">References</h2>
+<h3 id="incident-reporting-public-sources">Incident Reporting (Public Sources)</h3>
+<blockquote class="callout disclaimer">
+<p><em>The attack chain in this post is reconstructed from the sources below. No official attack chain has been released by Stryker or Microsoft. All technical inferences are for defensive educational purposes only.</em></p>
+</blockquote>
+<ul>
+<li><a href="https://www.stryker.com/us/en/about/news/2026/a-message-to-our-customers-03-2026.html">Stryker Official Statement — Customer Updates: Network Disruption (March 2026)</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/stryker-attack-wiped-tens-of-thousands-of-devices-no-malware-needed/">BleepingComputer — Stryker attack wiped tens of thousands of devices, no malware needed</a></li>
+<li><a href="https://krebsonsecurity.com/2026/03/iran-backed-hackers-claim-wiper-attack-on-medtech-firm-stryker/">KrebsOnSecurity — Iran-Backed Hackers Claim Wiper Attack on Medtech Firm Stryker</a></li>
+<li><a href="https://www.cybersecuritydive.com/news/stryker-attack-device-management-microsoft-iran/814816/">Cybersecurity Dive — Stryker attack raises concerns about role of device management tool</a></li>
+<li><a href="https://therecord.media/stryker-cyberattack-impact-iran">The Record (Recorded Future) — Stryker says hospital tools are safe, but digital ordering still down</a></li>
+<li><a href="https://techcrunch.com/2026/03/17/stryker-says-its-restoring-systems-after-pro-iran-hackers-wiped-thousands-of-employee-devices/">TechCrunch — Stryker says it's restoring systems after pro-Iran hackers wiped thousands of devices</a></li>
+<li><a href="https://www.nextgov.com/cybersecurity/2026/03/suspected-pro-iran-hacker-group-tied-stryker-cyberattack/412050/">Nextgov/FCW — Suspected pro-Iran hacker group tied to Stryker cyberattack</a></li>
+<li><a href="https://arcticwolf.com/resources/blog/stryker-systems-disrupted-cyber-attack-handala-group-claims-responsibility/">Arctic Wolf — Stryker Systems Disrupted in Cyber Attack; Handala Group Claims Responsibility</a></li>
+<li><a href="https://www.govinfosecurity.com/medtech-firm-stryker-disrupted-by-pro-iran-hackers-a-30980">GovInfoSecurity — Medtech Firm Stryker Disrupted by Pro-Iran Hackers</a></li>
+<li><a href="https://www.proarch.com/blog/threats-vulnerabilities/stryker-wiper-attack-analysis">ProArch — Stryker Cyberattack 2026: Lessons from a Global Wiper Attack</a></li>
+<li><a href="https://www.chiefhealthcareexecutive.com/view/the-stryker-cyberattack-and-what-hospitals-should-be-doing">Chief Healthcare Executive — The Stryker cyberattack and what hospitals should be doing</a></li>
+<li><a href="https://www.forrester.com/blogs/from-operating-rooms-to-iphones-what-the-stryker-attack-reveals-about-third-party-risk/">Forrester — From Operating Rooms to iPhones: What the Stryker Attack Reveals About Third-Party Risk</a></li>
+</ul>
+<h3 id="microsoft-documentation">Microsoft Documentation</h3>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/mem/intune/fundamentals/intune-endpoints">Microsoft Intune Required Endpoints</a></li>
+<li><a href="https://learn.microsoft.com/en-us/entra/global-secure-access/concept-private-access">Entra Private Access — Concept Overview</a></li>
+<li><a href="https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-configure">Privileged Identity Management for Entra Roles</a></li>
+<li><a href="https://learn.microsoft.com/en-us/mem/intune/fundamentals/multi-admin-approval">Multi Admin Approval in Intune</a></li>
+<li><a href="https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths">Conditional Access Authentication Strengths</a></li>
+<li><a href="https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-passwordless">FIDO2 Security Keys in Entra ID</a></li>
+<li><a href="https://learn.microsoft.com/en-us/mem/intune/fundamentals/scope-tags">Intune Scope Tags and Role-Based Access Control</a></li>
+<li><a href="https://learn.microsoft.com/en-us/autopilot/requirements?tabs=networking">Windows Autopilot Required Network Endpoints</a></li>
+<li><a href="https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access">Entra ID Break Glass Accounts</a></li>
+</ul>
+<hr />
+<p><em>If this post helped your organization, consider sharing it with your security team. The controls described here are implementable in a weekend, and they could be the difference between a contained incident and a Stryker-scale disaster.</em></p>
+<p><em>Questions or additions? Open an issue or pull request on GitHub.</em></p>
+<hr />
+<p><strong>© 2026. Licensed under MIT. Feel free to adapt and share.</strong></p>
+    </main>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>© 2026 · Licensed under MIT · Feel free to adapt and share</p>
+    <p style="margin-top:6px">
+      <a href="https://www.stryker.com/us/en/about/news/2026/a-message-to-our-customers-03-2026.html">Stryker Official Statement</a> ·
+      <a href="https://www.bleepingcomputer.com/news/security/stryker-attack-wiped-tens-of-thousands-of-devices-no-malware-needed/">BleepingComputer</a> ·
+      <a href="https://krebsonsecurity.com/2026/03/iran-backed-hackers-claim-wiper-attack-on-medtech-firm-stryker/">KrebsOnSecurity</a>
+    </p>
+  </footer>
+
+  <script>
+    // Syntax highlighting
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('pre code').forEach(block => {
+        hljs.highlightElement(block);
+      });
+
+      // Smooth scroll for TOC links
+      document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+          const target = document.querySelector(a.getAttribute('href'));
+          if (target) {
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+
+      // Active TOC highlight on scroll
+      const sections = document.querySelectorAll('.content h2, .content h3');
+      const tocLinks = document.querySelectorAll('.toc-sidebar a');
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            tocLinks.forEach(l => l.style.color = '');
+            const id = entry.target.getAttribute('id');
+            const active = document.querySelector(`.toc-sidebar a[href="#${id}"]`);
+            if (active) active.style.color = 'var(--accent)';
+          }
+        });
+      }, { rootMargin: '-10% 0px -80% 0px' });
+      sections.forEach(s => observer.observe(s));
+    });
+  </script>
+
+</body>
+</html>
