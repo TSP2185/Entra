@@ -6,7 +6,7 @@
   <title>Lessons from the Stryker Cyberattack: A Practical Microsoft Defense Playbook</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
     :root {
@@ -235,26 +235,80 @@
 
     /* ── CODE BLOCKS ── */
     .content pre {
-      background: var(--code-bg) !important;
-      border: 1px solid #30363d;
+      background: #1e1e2e !important;
+      border: 1px solid #3a3a5c;
       border-radius: var(--radius);
-      padding: 20px;
+      padding: 20px 24px;
       overflow-x: auto;
       margin: 20px 0;
       font-size: 13px;
-      line-height: 1.6;
+      line-height: 1.65;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    /* Override hljs theme background so it never bleeds through */
+    .content pre .hljs,
+    .content pre code.hljs {
+      background: transparent !important;
+      padding: 0 !important;
     }
     .content pre code {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
       background: transparent !important;
       border: none !important;
       padding: 0 !important;
-      color: inherit;
-      font-size: inherit;
+      color: #cdd6f4;   /* Catppuccin-style fallback for un-highlighted text */
+      font-size: 13px;
+      line-height: inherit;
     }
-    /* Language label */
+    /* Language badge */
+    .code-lang-badge {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      background: rgba(255,255,255,0.06);
+      padding: 2px 8px;
+      border-radius: 4px;
+      user-select: none;
+      pointer-events: none;
+    }
+    /* Legacy label suppression */
     .content pre[class*="language-"]::before,
     .content div.highlight::before {
       display: none;
+    }
+    /* ASCII / plain pre blocks */
+    .content pre:has(code:not([class])),
+    .content pre:has(code.nohighlight) {
+      background: #1e1e2e !important;
+      border-color: #3a3a5c;
+      color: #a6adc8;
+    }
+
+    /* ── CONTROL STACK ── */
+    .content pre.control-stack {
+      background: #000000 !important;
+      border: 1px solid #2a2a2a;
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+    .content pre.control-stack code {
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      color: #d4d4d4;
+      font-size: 13px;
+      font-family: inherit;
+      white-space: pre;
     }
 
     /* ── TABLES ── */
@@ -351,12 +405,6 @@
     /* ── INTRO SECTION ── */
     #introduction + p { font-size: 16px; line-height: 1.8; }
 
-    /* ── CONTROL STACK (preformatted box art) ── */
-    .content pre:has(code:not([class])) {
-      background: #1e1e2e !important;
-      border-color: #30363d;
-      color: #a0aec0;
-    }
 
     /* ── FOOTER ── */
     .footer {
@@ -653,8 +701,7 @@
 <li><strong>Grant:</strong> Require authentication strength → <strong>Phishing-resistant MFA</strong></li>
 <li><strong>Enable policy:</strong> On (test in Report-only first)</li>
 </ol>
-<p><code>json
-{
+<pre><code class="language-json">{
   "displayName": "REQUIRE - Phishing-Resistant MFA for Global Admins",
   "state": "enabled",
   "conditions": {
@@ -675,7 +722,7 @@
       "id": "00000000-0000-0000-0000-000000000004"
     }
   }
-}</code></p>
+}</code></pre>
 <blockquote class="callout code-note">
 <p><strong>Role GUIDs:</strong> Global Administrator = <code>62e90394-69f5-4237-9190-012177145e10</code>, Privileged Role Administrator = <code>e8611ab8-c189-46e8-94e1-60213ab1f814</code>, Intune Service Administrator = <code>3a2c62db-5318-420d-8d74-23affee5d9d5</code></p>
 </blockquote>
@@ -751,13 +798,12 @@
 <li><strong>Never use for day-to-day tasks.</strong> Any sign-in should trigger an immediate P1 alert.</li>
 </ul>
 <p><strong>Monitoring break-glass:</strong></p>
-<p><code>kql
-SigninLogs
+<pre><code class="language-sql">SigninLogs
 | where UserPrincipalName in ("breakglass1@contoso.onmicrosoft.com",
                                "breakglass2@contoso.onmicrosoft.com")
 | project TimeGenerated, UserPrincipalName, IPAddress,
           Location, ResultType, ResultDescription
-| order by TimeGenerated desc</code></p>
+| order by TimeGenerated desc</code></pre>
 <p>Any result from this query should be treated as a critical security event.</p>
 <hr />
 <h3 id="24-conditional-access-risky-user-and-session-controls">2.4 Conditional Access: Risky User and Session Controls</h3>
@@ -775,8 +821,7 @@ Target: Security info registration (User Actions)
 Users: All Users
 User Risk: High, Medium, Low
 Grant: Block access</code></p>
-<p><code>json
-{
+<pre><code class="language-json">{
   "displayName": "BLOCK - MFA Registration for Risky Users",
   "state": "enabled",
   "conditions": {
@@ -790,7 +835,7 @@ Grant: Block access</code></p>
     "operator": "OR",
     "builtInControls": ["block"]
   }
-}</code></p>
+}</code></pre>
 <blockquote class="callout stryker">
 <p><strong>Stryker relevance:</strong> Blocks the attacker from registering MFA on the newly created backdoor GA account if that account or session carries any risk signal. Without MFA registered, the backdoor account cannot pass CA policies requiring MFA — it is unusable.</p>
 </blockquote>
@@ -802,8 +847,7 @@ Target: Security info registration (User Actions)
 Users: All Users
 Sign-in Risk: High, Medium, Low
 Grant: Block access</code></p>
-<p><code>json
-{
+<pre><code class="language-json">{
   "displayName": "BLOCK - MFA Registration for Risky Sign-ins",
   "state": "enabled",
   "conditions": {
@@ -817,7 +861,7 @@ Grant: Block access</code></p>
     "operator": "OR",
     "builtInControls": ["block"]
   }
-}</code></p>
+}</code></pre>
 <blockquote class="callout stryker">
 <p><strong>Stryker relevance:</strong> The initial admin session from an attacker in Iran accessing a US-based tenant would generate a high sign-in risk score from Entra ID Protection near-immediately. This policy blocks that session from registering anything.</p>
 </blockquote>
@@ -829,8 +873,7 @@ Target: All cloud apps
 Users: All Users
 User Risk: High
 Grant: Block access</code></p>
-<p><code>json
-{
+<pre><code class="language-json">{
   "displayName": "BLOCK - High Risk User All Apps",
   "state": "enabled",
   "conditions": {
@@ -842,7 +885,7 @@ Grant: Block access</code></p>
     "operator": "OR",
     "builtInControls": ["block"]
   }
-}</code></p>
+}</code></pre>
 <blockquote class="callout stryker">
 <p><strong>Stryker relevance:</strong> A compromised admin account with credentials in a breach database, or showing sign-in behavior from a new country with an unknown device, would be elevated to High user risk by Entra ID Protection. This policy terminates that session before anything destructive can happen. The key point: <strong>do not use password change as remediation here</strong>. Require a security team review before the account is re-enabled.</p>
 </blockquote>
@@ -855,8 +898,7 @@ Target: Microsoft Graph, Azure Active Directory PowerShell,
 Users: All Users
 Exclude: [Approved-GraphAdmins security group]
 Grant: Block access</code></p>
-<p><code>json
-{
+<pre><code class="language-json">{
   "displayName": "BLOCK - Graph API and PowerShell Unapproved Users",
   "state": "enabled",
   "conditions": {
@@ -876,7 +918,7 @@ Grant: Block access</code></p>
     "operator": "OR",
     "builtInControls": ["block"]
   }
-}</code></p>
+}</code></pre>
 <blockquote class="callout code-note">
 <p>App GUIDs: Microsoft Graph = <code>00000003-0000-0000-c000-000000000000</code>, Azure AD PowerShell = <code>1b730954-1685-4b74-9bfd-dac224a7b894</code>, Azure PowerShell = <code>1950a258-227b-4e31-a9cf-717495945fc2</code></p>
 <p><strong>Stryker relevance:</strong> Blocks the attacker from using Graph API to create the backdoor GA account or to call the Intune management API (<code>/deviceManagement/managedDevices/{id}/wipe</code>) directly — an alternative path to triggering wipe actions that bypasses the Intune portal entirely.</p>
@@ -904,8 +946,7 @@ Target: All cloud apps
 Users: All Users
 Authentication Flow: Device Code Flow
 Grant: Block access</code></p>
-<p><code>json
-{
+<pre><code class="language-json">{
   "displayName": "BLOCK - Device Code Flow",
   "state": "enabled",
   "conditions": {
@@ -919,7 +960,7 @@ Grant: Block access</code></p>
     "operator": "OR",
     "builtInControls": ["block"]
   }
-}</code></p>
+}</code></pre>
 <blockquote class="callout stryker">
 <p><strong>Stryker relevance:</strong> If Handala used device code phishing to capture the initial admin token, this policy eliminates that vector entirely. No device code flow means no token capture without the victim's device.</p>
 </blockquote>
@@ -931,8 +972,7 @@ Target: All cloud apps
 Users: All Users
 Authentication Flow: Authentication Transfer
 Grant: Block access</code></p>
-<p><code>json
-{
+<pre><code class="language-json">{
   "displayName": "BLOCK - Authentication Transfer",
   "state": "enabled",
   "conditions": {
@@ -946,7 +986,7 @@ Grant: Block access</code></p>
     "operator": "OR",
     "builtInControls": ["block"]
   }
-}</code></p>
+}</code></pre>
 <blockquote class="callout stryker">
 <p><strong>Stryker relevance:</strong> Defense-in-depth against session relay and cross-device hijacking. Pairs directly with Policy 6 to close both ends of the token theft surface.</p>
 </blockquote>
@@ -1231,8 +1271,7 @@ Segment 1:
 </tr>
 </tbody>
 </table>
-<p><code>json
-{
+<pre><code class="language-json">{
   "displayName": "REQUIRE - GSA Compliant Network for Admin Portals",
   "state": "enabled",
   "conditions": {
@@ -1258,7 +1297,7 @@ Segment 1:
     "operator": "OR",
     "builtInControls": ["block"]
   }
-}</code></p>
+}</code></pre>
 <p><strong>Step 5: Add Device Compliance Requirement</strong></p>
 <p>Layer a second policy on top:</p>
 <p><code>Name: REQUIRE - Compliant Device for Admin Portals
@@ -1491,8 +1530,7 @@ Tag Name: Priority-Critical  (servers, clinical systems)</code></p>
 <hr />
 <h3 id="query-1-new-global-administrator-role-assignment">Query 1: New Global Administrator Role Assignment</h3>
 <p><strong>Risk:</strong> Backdoor GA account creation, the most common attacker persistence technique in cloud tenants.</p>
-<p><code>kql
-AuditLogs
+<pre><code class="language-sql">AuditLogs
 | where OperationName == "Add member to role"
 | where TargetResources[0].modifiedProperties has "Global Administrator"
 | extend InitiatedBy = tostring(InitiatedBy.user.userPrincipalName)
@@ -1503,7 +1541,7 @@ AuditLogs
     [0].newValue)
 | project TimeGenerated, InitiatedBy, TargetUser,
           TargetObjectId, RoleName, CorrelationId
-| order by TimeGenerated desc</code></p>
+| order by TimeGenerated desc</code></pre>
 <p><strong>Sentinel Rule Settings:</strong>
 - Severity: High
 - Run frequency: Every 5 minutes
@@ -1512,8 +1550,7 @@ AuditLogs
 <hr />
 <h3 id="query-2-new-account-created-and-ga-assigned-within-1-hour">Query 2: New Account Created and GA Assigned Within 1 Hour</h3>
 <p><strong>Risk:</strong> This is exactly the persistence pattern used in the Stryker attack. Create a fresh account, immediately elevate it to GA, and it survives any password reset on the original compromised account.</p>
-<p><code>kql
-let newAccounts = AuditLogs
+<pre><code class="language-sql">let newAccounts = AuditLogs
 | where OperationName == "Add user"
 | project CreatedTime = TimeGenerated,
           NewUser = tostring(TargetResources[0].userPrincipalName),
@@ -1530,7 +1567,7 @@ newAccounts
 | extend TimeDeltaMinutes = datetime_diff('minute', AssignedTime, CreatedTime)
 | project NewUser, CreatedTime, CreatedBy, AssignedTime,
           AssignedBy, TimeDeltaMinutes
-| order by TimeDeltaMinutes asc</code></p>
+| order by TimeDeltaMinutes asc</code></pre>
 <p><strong>Sentinel Rule Settings:</strong>
 - Severity: <strong>Critical</strong>
 - Run frequency: Every 5 minutes
@@ -1539,8 +1576,7 @@ newAccounts
 <hr />
 <h3 id="query-3-global-admin-sign-in-from-non-compliant-or-unmanaged-device">Query 3: Global Admin Sign-In from Non-Compliant or Unmanaged Device</h3>
 <p><strong>Risk:</strong> A GA account signing in from outside your managed device estate. Could be an attacker on a personal machine or a BYOD device that never got enrolled in Intune.</p>
-<p><code>kql
-let gaUsers = IdentityInfo
+<pre><code class="language-sql">let gaUsers = IdentityInfo
 | where AssignedRoles has "Global Administrator"
 | summarize by AccountUPN;
 SigninLogs
@@ -1556,7 +1592,7 @@ SigninLogs
           Location, DeviceCompliant, DeviceManaged,
           DeviceId, OS, ConditionalAccessStatus, ResultType
 | where ResultType == 0
-| order by TimeGenerated desc</code></p>
+| order by TimeGenerated desc</code></pre>
 <p><strong>Sentinel Rule Settings:</strong>
 - Severity: High
 - Run frequency: Every 15 minutes
@@ -1564,8 +1600,7 @@ SigninLogs
 <hr />
 <h3 id="query-4-ga-sign-in-from-new-geography-first-seen-in-30-days">Query 4: GA Sign-In from New Geography (First Seen in 30 Days)</h3>
 <p><strong>Risk:</strong> A GA credential used from a country or region with no sign-in history. One of the cleaner indicators of account compromise.</p>
-<p><code>kql
-let lookback = 30d;
+<pre><code class="language-sql">let lookback = 30d;
 let gaUsers = IdentityInfo
 | where AssignedRoles has "Global Administrator"
 | summarize by AccountUPN;
@@ -1582,7 +1617,7 @@ SigninLogs
 | where Location !in (HistoricCountries)
 | project TimeGenerated, UserPrincipalName, IPAddress,
           Location, HistoricCountries, ConditionalAccessStatus
-| order by TimeGenerated desc</code></p>
+| order by TimeGenerated desc</code></pre>
 <p><strong>Sentinel Rule Settings:</strong>
 - Severity: High
 - Run frequency: Every 1 hour
@@ -1590,8 +1625,7 @@ SigninLogs
 <hr />
 <h3 id="query-5-intune-bulk-device-wipe-detection">Query 5: Intune Bulk Device Wipe Detection</h3>
 <p><strong>Risk:</strong> Mass wipe in progress. This is the Stryker attack signature. The alert fires if more than 10 wipe-class actions come from a single initiator within a 15-minute window.</p>
-<p><code>kql
-IntuneAuditLogs
+<pre><code class="language-sql">IntuneAuditLogs
 | where OperationName in (
     "Wipe",
     "RetireDevice",
@@ -1611,7 +1645,7 @@ IntuneAuditLogs
 | extend DeviceCount = array_length(DeviceList)
 | project TimeGenerated, Actor, ActionCount,
           DeviceCount, Actions, DeviceList
-| order by ActionCount desc</code></p>
+| order by ActionCount desc</code></pre>
 <p><strong>Sentinel Rule Settings:</strong>
 - Severity: <strong>Critical</strong>
 - Run frequency: Every 5 minutes
@@ -1620,8 +1654,7 @@ IntuneAuditLogs
 <hr />
 <h3 id="query-6-intune-multi-admin-approval-approved-by-same-person-who-requested">Query 6: Intune Multi-Admin Approval Approved by Same Person Who Requested</h3>
 <p><strong>Risk:</strong> A misconfigured access policy, or a compromised approver account used to rubber-stamp a destructive request from the same attacker.</p>
-<p><code>kql
-IntuneAuditLogs
+<pre><code class="language-sql">IntuneAuditLogs
 | where OperationName == "ApproveRequest"
 | extend ApproverUPN = tostring(Actor)
 | extend RequestId = tostring(CorrelationId)
@@ -1634,7 +1667,7 @@ IntuneAuditLogs
 ) on RequestId
 | where ApproverUPN == RequesterUPN
 | project TimeGenerated, ApproverUPN, RequesterUPN,
-          RequestId, TargetObjectName</code></p>
+          RequestId, TargetObjectName</code></pre>
 <p><strong>Sentinel Rule Settings:</strong>
 - Severity: Critical
 - Run frequency: Every 5 minutes
@@ -1642,8 +1675,7 @@ IntuneAuditLogs
 <hr />
 <h3 id="query-7-break-glass-account-activity">Query 7: Break-Glass Account Activity</h3>
 <p><strong>Risk:</strong> Break-glass accounts should never see activity outside a declared emergency. Any sign-in is a P1 event by default.</p>
-<p><code>kql
-// Update the list below with your actual break-glass UPNs
+<pre><code class="language-sql">// Update the list below with your actual break-glass UPNs
 let breakGlassAccounts = dynamic([
     "breakglass1@contoso.onmicrosoft.com",
     "breakglass2@contoso.onmicrosoft.com"
@@ -1653,7 +1685,7 @@ SigninLogs
 | project TimeGenerated, UserPrincipalName, IPAddress,
           Location, ResultType, ResultDescription,
           ConditionalAccessStatus, DeviceDetail
-| order by TimeGenerated desc</code></p>
+| order by TimeGenerated desc</code></pre>
 <p><strong>Sentinel Rule Settings:</strong>
 - Severity: <strong>Critical</strong>
 - Run frequency: Every 5 minutes
@@ -1662,8 +1694,7 @@ SigninLogs
 <hr />
 <h3 id="query-8-pim-bypass-direct-ga-assignment-without-eligible-role-activation">Query 8: PIM Bypass, Direct GA Assignment Without Eligible Role Activation</h3>
 <p><strong>Risk:</strong> If PIM is your gate for GA access, any direct active assignment that did not come through a PIM activation is a bypass. That means either a misconfiguration or an attacker who found a way around your controls.</p>
-<p><code>kql
-AuditLogs
+<pre><code class="language-sql">AuditLogs
 | where OperationName == "Add member to role"
 | where TargetResources[0].modifiedProperties has "Global Administrator"
 | where InitiatedBy !has "MS-PIM"
@@ -1671,7 +1702,7 @@ AuditLogs
 | extend TargetUser = tostring(TargetResources[0].userPrincipalName)
 | project TimeGenerated, InitiatedBy, TargetUser,
           OperationName, CorrelationId
-| order by TimeGenerated desc</code></p>
+| order by TimeGenerated desc</code></pre>
 <p><strong>Sentinel Rule Settings:</strong>
 - Severity: High
 - Run frequency: Every 5 minutes
@@ -1719,7 +1750,7 @@ Action 5: Post to Teams security channel
 <hr />
 <h2 id="8-full-control-stack-summary">8. Full Control Stack Summary</h2>
 <p>Here is the full picture, showing how each layer maps to the attack steps from Section 1:</p>
-<p><code>╔══════════════════════════════════════════════════════════════════╗
+<pre class="control-stack"><code>╔══════════════════════════════════════════════════════════════════╗
 ║              STRYKER-PROOF MICROSOFT TENANT HARDENING            ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                                                                  ║
@@ -1780,7 +1811,7 @@ Action 5: Post to Teams security channel
 ║  cannot reach admin portal without PAW + GSA (Layers 2+3),       ║
 ║  cannot wipe at scale (scope tags), cannot wipe alone (MAA),     ║
 ║  and is detected within minutes if anything slips through.       ║
-╚══════════════════════════════════════════════════════════════════╝</code></p>
+╚══════════════════════════════════════════════════════════════════╝</code></pre>
 <h3 id="licensing-requirements">Licensing Requirements</h3>
 <table>
 <thead>
@@ -1883,8 +1914,24 @@ Action 5: Post to Teams security channel
   <script>
     // Syntax highlighting
     document.addEventListener('DOMContentLoaded', () => {
+      // Syntax highlight + add language label badge
+      const langLabels = { json: 'JSON', sql: 'KQL', bash: 'Bash', powershell: 'PowerShell',
+                           python: 'Python', yaml: 'YAML', xml: 'XML', javascript: 'JS' };
       document.querySelectorAll('pre code').forEach(block => {
+        // Skip control-stack — box-drawing chars don't need highlighting
+        if (block.closest('pre.control-stack')) return;
         hljs.highlightElement(block);
+        const pre = block.parentElement;
+        const cls = [...block.classList].find(c => c.startsWith('language-'));
+        if (cls) {
+          const lang = cls.replace('language-', '');
+          const label = langLabels[lang] || lang.toUpperCase();
+          const badge = document.createElement('span');
+          badge.className = 'code-lang-badge';
+          badge.textContent = label;
+          pre.style.position = 'relative';
+          pre.appendChild(badge);
+        }
       });
 
       // Smooth scroll for TOC links
