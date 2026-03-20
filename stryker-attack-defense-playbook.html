@@ -214,6 +214,8 @@
 
     /* ── PARAGRAPHS ── */
     .content p { margin-bottom: 16px; color: var(--text); }
+    /* Ensure p tags can never bleed colour into pre/code blocks */
+    .content pre p, .content pre.control-stack p { color: inherit; margin: 0; }
 
     /* ── HORIZONTAL RULE ── */
     .content hr {
@@ -445,6 +447,13 @@
   <header class="hero">
     <div class="hero-badge">🔴 Security Incident Analysis &amp; Defense Playbook</div>
     <h1>Lessons from the Stryker Cyberattack:<br>A Practical Microsoft Defense Playbook</h1>
+    <div class="hero-meta">
+      <span>Security Architect · Microsoft Identity &amp; Endpoint</span>
+      <span class="dot">·</span>
+      <span>March 2026</span>
+      <span class="dot">·</span>
+      <span>~30 min read</span>
+    </div>
     <div class="tags">
       <span class="tag">Microsoft Sentinel</span>
       <span class="tag">Entra ID</span>
@@ -521,8 +530,7 @@
 <hr />
 <h3 id="reconstructed-attack-chain">Reconstructed Attack Chain</h3>
 <p>Before building defenses, understand what the available evidence suggests happened, step by step:</p>
-<p>```
-[1] INITIAL ACCESS — Vector unconfirmed
+<pre class="control-stack"><code>[1] INITIAL ACCESS — Vector unconfirmed
     ┌─────────────────────────────────────────────────────────────┐
     │ Handala obtained valid credentials for at least one         │
     │ Stryker administrator account.                              │
@@ -532,8 +540,8 @@
     │                                                             │
     │ Source: BleepingComputer (source familiar with attack)      │
     └─────────────────────────────────────────────────────────────┘
-    ⚠️ Control gap: No phishing-resistant MFA on admin accounts</p>
-<p>[2] AUTHENTICATION — MFA bypassed or absent
+    ⚠️ Control gap: No phishing-resistant MFA on admin accounts
+[2] AUTHENTICATION — MFA bypassed or absent
     ┌─────────────────────────────────────────────────────────────┐
     │ Attacker successfully authenticated to the Microsoft 365    │
     │ tenant using the compromised admin credentials.             │
@@ -541,15 +549,15 @@
     │ MFA was either not enforced, or bypassed via token theft /  │
     │ SIM swap / AiTM — exact method not confirmed publicly.      │
     └─────────────────────────────────────────────────────────────┘
-    ⚠️ Control gap: Weak or absent MFA on privileged accounts</p>
-<p>[3] PRIVILEGE CONFIRMATION — GA access verified
+    ⚠️ Control gap: Weak or absent MFA on privileged accounts
+[3] PRIVILEGE CONFIRMATION — GA access verified
     ┌─────────────────────────────────────────────────────────────┐
     │ Attacker confirmed the compromised account held Global      │
     │ Administrator privileges, which provide unrestricted access │
     │ to Microsoft Intune by inheritance.                         │
     └─────────────────────────────────────────────────────────────┘
-    ⚠️ Control gap: Standing GA access, no JIT/PIM controls</p>
-<p>[4] PERSISTENCE — New GA backdoor account created
+    ⚠️ Control gap: Standing GA access, no JIT/PIM controls
+[4] PERSISTENCE — New GA backdoor account created
     ┌─────────────────────────────────────────────────────────────┐
     │ ★ KEY STEP — reported by BleepingComputer                   │
     │                                                             │
@@ -565,8 +573,8 @@
     └─────────────────────────────────────────────────────────────┘
     ⚠️ Control gap: No alert on new GA account creation,
                    no PIM approval required for GA assignment,
-                   no restriction on GA account creation</p>
-<p>[5] MASS WIPE EXECUTION — Intune abused at scale
+                   no restriction on GA account creation
+[5] MASS WIPE EXECUTION — Intune abused at scale
     ┌─────────────────────────────────────────────────────────────┐
     │ Between 5:00 and 8:00 a.m. UTC on March 11, the attacker   │
     │ used the Intune admin console to issue factory reset / wipe │
@@ -584,16 +592,15 @@
     └─────────────────────────────────────────────────────────────┘
     ⚠️ Control gap: No Multi-Admin Approval for wipe actions,
                    no scope tag partitioning, no bulk wipe alert,
-                   no GSA/compliant device requirement for admin portal</p>
-<p>[6] CLAIMED EXFILTRATION — Unconfirmed
+                   no GSA/compliant device requirement for admin portal
+[6] CLAIMED EXFILTRATION — Unconfirmed
     ┌─────────────────────────────────────────────────────────────┐
     │ Handala claimed to have stolen ~50 terabytes of data.       │
     │ Stryker's investigation found NO evidence of data           │
     │ exfiltration at time of writing.                            │
     │                                                             │
     │ Sources: Stryker official statement, The Record             │
-    └─────────────────────────────────────────────────────────────┘
-```</p>
+    └─────────────────────────────────────────────────────────────┘</code></pre>
 <h3 id="attack-chain-summary-what-each-step-exploited">Attack Chain Summary: What Each Step Exploited</h3>
 <table>
 <thead>
